@@ -22,6 +22,7 @@ import { DataTable, DataTableColumnHeader } from "@/components/shared/data-table
 import { StatusBadge } from "@/components/shared/status-badge";
 import { DetailSheet } from "@/components/shared/detail-sheet";
 import { InstallPartDialog } from "@/components/shared/install-part-dialog";
+import { SparePartFormDialog } from "@/components/forms/spare-part-form-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -52,6 +53,7 @@ export function SparePartsPage() {
   const [detail, setDetail] = useState<SparePart | null>(null);
   const [open, setOpen] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
 
   const parts = data ?? [];
 
@@ -231,7 +233,7 @@ export function SparePartsPage() {
         description="Manage component stock used for repairs, swaps and refurbishment."
         icon={<PackageSearch className="h-5 w-5" />}
       >
-        <Button onClick={() => toast.info("Add spare part form (demo)")}>
+        <Button onClick={() => setFormOpen(true)}>
           <Plus className="h-4 w-4" /> Add Part
         </Button>
       </PageHeader>
@@ -366,6 +368,12 @@ export function SparePartsPage() {
             </>
           )
         }
+      />
+
+      <SparePartFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        onCreated={refetch}
       />
 
       <InstallPartDialog

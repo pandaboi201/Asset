@@ -29,6 +29,7 @@ import {
 import { useAsync } from "@/hooks/use-async";
 import { maintenanceService } from "@/services";
 import { formatDate, getInitials } from "@/lib/format";
+import { MaintenanceFormDialog } from "@/components/forms/maintenance-form-dialog";
 import { toast } from "@/components/ui/sonner";
 
 const STATUS_OPTIONS = [
@@ -51,6 +52,7 @@ export function MaintenancePage() {
   const [type, setType] = useState("");
   const [detail, setDetail] = useState<MaintenanceTask | null>(null);
   const [open, setOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
 
   const tasks = data ?? [];
 
@@ -204,7 +206,7 @@ export function MaintenancePage() {
         description="Plan preventive and corrective maintenance to maximize asset uptime."
         icon={<Wrench className="h-5 w-5" />}
       >
-        <Button onClick={() => toast.info("Schedule maintenance form (demo)")}>
+        <Button onClick={() => setFormOpen(true)}>
           <Plus className="h-4 w-4" /> Schedule Task
         </Button>
       </PageHeader>
@@ -239,6 +241,8 @@ export function MaintenancePage() {
           </>
         }
       />
+
+      <MaintenanceFormDialog open={formOpen} onOpenChange={setFormOpen} onCreated={refetch} />
 
       <DetailSheet
         open={open}

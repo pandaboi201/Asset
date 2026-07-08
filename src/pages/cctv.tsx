@@ -32,6 +32,7 @@ import { CCTV_ZONE_OPTIONS } from "@/data/cctv";
 import { formatDate, formatRelativeTime } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
+import { CameraFormDialog } from "@/components/forms/camera-form-dialog";
 
 const STATUS_OPTIONS = [
   { label: "Online", value: "online" },
@@ -136,12 +137,13 @@ function CameraTile({
 }
 
 export function CctvPage() {
-  const { data, loading } = useAsync(() => cctvService.all(), []);
+  const { data, loading, refetch } = useAsync(() => cctvService.all(), []);
   const [search, setSearch] = useState("");
   const [zone, setZone] = useState("");
   const [status, setStatus] = useState("");
   const [detail, setDetail] = useState<CctvCamera | null>(null);
   const [open, setOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
 
   const cameras = data ?? [];
 
@@ -185,7 +187,7 @@ export function CctvPage() {
         description="Monitor the camera fleet, recording status and storage health."
         icon={<Camera className="h-5 w-5" />}
       >
-        <Button onClick={() => toast.info("Add camera form (demo)")}>
+        <Button onClick={() => setFormOpen(true)}>
           <Plus className="h-4 w-4" /> Add Camera
         </Button>
       </PageHeader>
@@ -251,6 +253,8 @@ export function CctvPage() {
           <NvrPanel />
         </TabsContent>
       </Tabs>
+
+      <CameraFormDialog open={formOpen} onOpenChange={setFormOpen} onCreated={refetch} />
 
       <DetailSheet
         open={open}
