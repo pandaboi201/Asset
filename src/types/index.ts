@@ -66,8 +66,6 @@ export interface Asset {
   department: string;
   purchaseDate: string;
   warrantyExpiry: string;
-  purchaseCost: number;
-  currentValue: number;
   supplier: string;
   notes?: string;
   createdAt: string;
@@ -213,6 +211,96 @@ export interface CctvCamera {
   lastPing: string;
   installedDate: string;
   firmwareVersion: string;
+  nvrId?: ID | null;
+}
+
+export type NvrStatus = "online" | "offline" | "degraded" | "maintenance";
+
+/** Network Video Recorder that aggregates and records CCTV camera feeds. */
+export interface Nvr {
+  id: ID;
+  name: string;
+  manufacturer: string;
+  model: string;
+  location: string;
+  ipAddress: string;
+  status: NvrStatus;
+  channelsTotal: number;
+  channelsUsed: number;
+  storageUsedTb: number;
+  storageTotalTb: number;
+  recordingRetentionDays: number;
+  firmwareVersion: string;
+  installedDate: string;
+  connectedCameraIds: ID[];
+}
+
+export type UpgradeType =
+  | "memory"
+  | "storage"
+  | "os"
+  | "component"
+  | "firmware"
+  | "peripheral";
+
+/** A hardware/software upgrade performed on a specific device (asset). */
+export interface DeviceUpgrade {
+  id: ID;
+  assetId: ID;
+  assetTag: string;
+  assetName: string;
+  type: UpgradeType;
+  title: string;
+  description: string;
+  fromSpec?: string;
+  toSpec?: string;
+  performedBy: {
+    id?: ID;
+    name: string;
+  };
+  performedAt: string;
+}
+
+/** Record of a spare part being installed into a specific device (asset). */
+export interface PartInstallation {
+  id: ID;
+  partId: ID;
+  partNumber: string;
+  partName: string;
+  assetId: ID;
+  assetTag: string;
+  assetName: string;
+  quantity: number;
+  installedBy: {
+    id?: ID;
+    name: string;
+  };
+  installedAt: string;
+  repairTicketNumber?: string;
+}
+
+/**
+ * A normalized event on a device's lifecycle timeline. The asset detail page
+ * merges issues, returns, repairs, upgrades, maintenance and part swaps into a
+ * single chronological history using this shape.
+ */
+export type DeviceHistoryKind =
+  | "issue"
+  | "return"
+  | "repair"
+  | "upgrade"
+  | "maintenance"
+  | "part";
+
+export interface DeviceHistoryEvent {
+  id: string;
+  kind: DeviceHistoryKind;
+  title: string;
+  description?: string;
+  actor?: string;
+  status?: string;
+  reference?: string;
+  date: string;
 }
 
 export type NotificationType =

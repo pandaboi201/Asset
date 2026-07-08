@@ -17,7 +17,6 @@ import {
 import {
   ArrowUpRight,
   Boxes,
-  DollarSign,
   Download,
   Gauge,
   Laptop,
@@ -58,7 +57,6 @@ import { toast } from "@/components/ui/sonner";
 
 const KPI_ICONS: Record<string, React.ReactNode> = {
   "total-assets": <Laptop className="h-5 w-5" />,
-  "asset-value": <DollarSign className="h-5 w-5" />,
   "active-assets": <ShieldCheck className="h-5 w-5" />,
   "open-repairs": <Wrench className="h-5 w-5" />,
   "low-stock": <Boxes className="h-5 w-5" />,
@@ -102,9 +100,9 @@ export function DashboardPage() {
       </PageHeader>
 
       {/* KPI grid */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {kpis.loading || !kpis.data
-          ? Array.from({ length: 6 }).map((_, i) => <StatCardSkeleton key={i} />)
+          ? Array.from({ length: 5 }).map((_, i) => <StatCardSkeleton key={i} />)
           : kpis.data.map((metric, i) => (
               <StatCard
                 key={metric.id}

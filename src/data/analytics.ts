@@ -16,7 +16,6 @@ const CHART_COLORS = [
   "hsl(var(--chart-5))",
 ];
 
-const totalAssetValue = assets.reduce((sum, a) => sum + a.currentValue, 0);
 const activeAssets = assets.filter((a) => a.status === "in-use").length;
 const openRepairs = repairTickets.filter(
   (t) => t.status !== "repaired" && t.status !== "unrepairable",
@@ -32,23 +31,6 @@ export const kpiMetrics: KpiMetric[] = [
     delta: 4.2,
     trend: "up",
     spark: [38, 42, 45, 44, 50, 55, 58, assets.length],
-  },
-  {
-    id: "asset-value",
-    label: "Total Asset Value",
-    value: totalAssetValue,
-    format: "currency",
-    delta: 2.8,
-    trend: "up",
-    spark: [
-      totalAssetValue * 0.82,
-      totalAssetValue * 0.85,
-      totalAssetValue * 0.88,
-      totalAssetValue * 0.9,
-      totalAssetValue * 0.94,
-      totalAssetValue * 0.97,
-      totalAssetValue,
-    ],
   },
   {
     id: "active-assets",
