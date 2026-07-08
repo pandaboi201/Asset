@@ -1,13 +1,15 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
+  Laptop,
   MoreHorizontal,
   ShieldCheck,
   UserPlus,
   Users as UsersIcon,
 } from "lucide-react";
 
-import type { User } from "@/types";
+import type { Asset, User } from "@/types";
 import { PageHeader } from "@/components/shared/page-header";
 import { MiniStat } from "@/components/shared/mini-stat";
 import { SearchInput } from "@/components/shared/search-input";
@@ -26,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAsync } from "@/hooks/use-async";
-import { userService } from "@/services";
+import { assetService, userService } from "@/services";
 import { DEPARTMENT_OPTIONS } from "@/data/users";
 import { formatDate, formatRelativeTime, getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
@@ -48,6 +50,7 @@ const ROLE_TONE: Record<string, string> = {
 
 export function UsersPage() {
   const { data, loading } = useAsync(() => userService.all(), []);
+  const assetsQ = useAsync(() => assetService.all(), []);
   const [search, setSearch] = useState("");
   const [role, setRole] = useState("");
   const [department, setDepartment] = useState("");
@@ -55,6 +58,21 @@ export function UsersPage() {
   const [open, setOpen] = useState(false);
 
   const users = data ?? [];
+
+  /** Map of userId -> devices currently assigned to them. */
+  const devicesByUser = useMemo(() => {
+    const map = new Map<string, Asset[]>();
+    for (const asset of assetsQ.data ?? []) {
+      const owner = asset.assignedTo?.id;
+      if (!owner) continue;
+      const list = map.get(owner) ?? [];
+      list.push(asset);
+      map.set(owner, list);
+    }
+    return map;
+  }, [assetsQ.data]);
+
+  const detailDevices = detail ? (devicesByUser.get(detail.id) ?? []) : [];
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -130,6 +148,23 @@ export function UsersPage() {
         meta: { label: "Title" },
       },
       {
+        id: "devices",
+        enableSorting: false,
+        header: "Devices",
+        cell: ({ row }) => {
+          const count = devicesByUser.get(row.original.id)?.length ?? 0;
+          return (
+            <span className="inline-flex items-center gap-1.5 text-sm">
+              <Laptop className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className={count === 0 ? "text-muted-foreground" : "font-medium"}>
+                {count}
+              </span>
+            </span>
+          );
+        },
+        meta: { label: "Devices" },
+      },
+      {
         accessorKey: "lastActiveAt",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Last active" />,
         cell: ({ row }) => (
@@ -179,8 +214,7 @@ export function UsersPage() {
         size: 48,
       },
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [devicesByUser],
   );
 
   return (
@@ -265,6 +299,38 @@ export function UsersPage() {
                     { label: "Last active", value: formatRelativeTime(detail.lastActiveAt) },
                     { label: "Member since", value: formatDate(detail.createdAt) },
                   ],
+                },
+                {
+                  title: `Assigned devices (${detailDevices.length})`,
+                  rows: detailDevices.length
+                    ? detailDevices.map((d) => ({
+                        label: (
+                          <Link
+                            to={`/assets/${d.id}`}
+                            className="font-mono text-xs text-foreground hover:text-primary hover:underline"
+                          >
+                            {d.assetTag}
+                          </Link>
+                        ),
+                        value: (
+                          <span className="flex items-center justify-end gap-2">
+                            <span className="max-w-[150px] truncate text-muted-foreground">
+                              {d.name}
+                            </span>
+                            <StatusBadge status={d.status} withDot={false} />
+                          </span>
+                        ),
+                      }))
+                    : [
+                        {
+                          label: "—",
+                          value: (
+                            <span className="text-muted-foreground">
+                              No devices assigned
+                            </span>
+                          ),
+                        },
+                      ],
                 },
               ]
             : []

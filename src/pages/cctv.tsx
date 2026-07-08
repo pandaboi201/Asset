@@ -7,11 +7,13 @@ import {
   MapPin,
   Plus,
   Radio,
+  Server,
+  Video,
   Wifi,
   WifiOff,
 } from "lucide-react";
 
-import type { CctvCamera } from "@/types";
+import type { CctvCamera, Nvr } from "@/types";
 import { PageHeader } from "@/components/shared/page-header";
 import { MiniStat } from "@/components/shared/mini-stat";
 import { SearchInput } from "@/components/shared/search-input";
@@ -23,8 +25,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAsync } from "@/hooks/use-async";
-import { cctvService } from "@/services";
+import { cctvService, nvrService } from "@/services";
 import { CCTV_ZONE_OPTIONS } from "@/data/cctv";
 import { formatDate, formatRelativeTime } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
@@ -187,6 +190,17 @@ export function CctvPage() {
         </Button>
       </PageHeader>
 
+      <Tabs defaultValue="cameras" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="cameras">
+            <Camera className="h-4 w-4" /> Cameras
+          </TabsTrigger>
+          <TabsTrigger value="recorders">
+            <Server className="h-4 w-4" /> Recorders (NVR)
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="cameras" className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MiniStat label="Online" value={stats.online} tone="success" icon={<Wifi className="h-5 w-5" />} loading={loading} />
         <MiniStat label="Offline" value={stats.offline} tone="destructive" icon={<WifiOff className="h-5 w-5" />} loading={loading} />
@@ -231,6 +245,12 @@ export function CctvPage() {
           ))}
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="recorders">
+          <NvrPanel />
+        </TabsContent>
+      </Tabs>
 
       <DetailSheet
         open={open}
@@ -273,6 +293,245 @@ export function CctvPage() {
               </Button>
               <Button onClick={() => toast.success(`Opening live feed for ${detail.name} (demo)`)}>
                 <Radio className="h-4 w-4" /> Live feed
+              </Button>
+            </>
+          )
+        }
+      />
+    </div>
+  );
+}
+
+
+function NvrTile({
+  nvr,
+  onOpen,
+  index,
+}: {
+  nvr: Nvr;
+  onOpen: (n: Nvr) => void;
+  index: number;
+}) {
+  const channelPct = Math.round((nvr.channelsUsed / nvr.channelsTotal) * 100);
+  const storagePct = Math.round((nvr.storageUsedTb / nvr.storageTotalTb) * 100);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: (index % 6) * 0.05 }}
+    >
+      <Card
+        onClick={() => onOpen(nvr)}
+        className="group cursor-pointer p-5 transition-shadow hover:shadow-elevated"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Server className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate font-semibold">{nvr.name}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {nvr.manufacturer} · {nvr.model}
+              </p>
+            </div>
+          </div>
+          <StatusBadge status={nvr.status} />
+        </div>
+
+        <div className="mt-4 space-y-3">
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Video className="h-3 w-3" /> Channels
+              </span>
+              <span>
+                {nvr.channelsUsed} / {nvr.channelsTotal}
+              </span>
+            </div>
+            <Progress
+              value={channelPct}
+              className="h-1.5"
+              indicatorClassName={channelPct > 90 ? "bg-warning" : "bg-primary"}
+            />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <HardDrive className="h-3 w-3" /> Storage
+              </span>
+              <span>
+                {nvr.storageUsedTb} / {nvr.storageTotalTb} TB
+              </span>
+            </div>
+            <Progress
+              value={storagePct}
+              className="h-1.5"
+              indicatorClassName={
+                storagePct > 85
+                  ? "bg-destructive"
+                  : storagePct > 65
+                    ? "bg-warning"
+                    : "bg-success"
+              }
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between border-t pt-3 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <MapPin className="h-3 w-3" /> {nvr.location}
+          </span>
+          <span className="font-mono">{nvr.ipAddress}</span>
+        </div>
+      </Card>
+    </motion.div>
+  );
+}
+
+function NvrPanel() {
+  const { data, loading } = useAsync(() => nvrService.all(), []);
+  const camerasQ = useAsync(() => cctvService.all(), []);
+  const [detail, setDetail] = useState<Nvr | null>(null);
+  const [open, setOpen] = useState(false);
+
+  const nvrs = data ?? [];
+
+  const cameraMap = useMemo(() => {
+    const map = new Map<string, CctvCamera>();
+    for (const c of camerasQ.data ?? []) map.set(c.id, c);
+    return map;
+  }, [camerasQ.data]);
+
+  const stats = useMemo(
+    () => ({
+      total: nvrs.length,
+      online: nvrs.filter((n) => n.status === "online").length,
+      channels: nvrs.reduce((s, n) => s + n.channelsUsed, 0),
+      storage: Math.round(
+        (nvrs.reduce((s, n) => s + n.storageUsedTb, 0) /
+          Math.max(nvrs.reduce((s, n) => s + n.storageTotalTb, 0), 1)) *
+          100,
+      ),
+    }),
+    [nvrs],
+  );
+
+  const connectedCameras = detail
+    ? detail.connectedCameraIds
+        .map((id) => cameraMap.get(id))
+        .filter((c): c is CctvCamera => Boolean(c))
+    : [];
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MiniStat label="Recorders" value={stats.total} icon={<Server className="h-5 w-5" />} loading={loading} />
+        <MiniStat label="Online" value={stats.online} tone="success" icon={<Wifi className="h-5 w-5" />} loading={loading} />
+        <MiniStat label="Channels in use" value={stats.channels} tone="info" icon={<Video className="h-5 w-5" />} loading={loading} />
+        <MiniStat label="Storage used" value={`${stats.storage}%`} tone="warning" icon={<HardDrive className="h-5 w-5" />} loading={loading} />
+      </div>
+
+      {loading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Card key={i} className="p-5">
+              <Skeleton className="h-11 w-11 rounded-xl" />
+              <Skeleton className="mt-3 h-4 w-2/3" />
+              <Skeleton className="mt-4 h-1.5 w-full" />
+              <Skeleton className="mt-3 h-1.5 w-full" />
+            </Card>
+          ))}
+        </div>
+      ) : nvrs.length === 0 ? (
+        <EmptyState icon={Server} title="No recorders" description="No NVR devices have been registered." />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {nvrs.map((nvr, i) => (
+            <NvrTile
+              key={nvr.id}
+              nvr={nvr}
+              index={i}
+              onOpen={(n) => {
+                setDetail(n);
+                setOpen(true);
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      <DetailSheet
+        open={open}
+        onOpenChange={setOpen}
+        headerBadge={detail && <StatusBadge status={detail.status} />}
+        title={detail?.name ?? ""}
+        subtitle={detail ? `${detail.manufacturer} · ${detail.model}` : ""}
+        sections={
+          detail
+            ? [
+                {
+                  title: "Network",
+                  rows: [
+                    { label: "IP address", value: <span className="font-mono">{detail.ipAddress}</span> },
+                    { label: "Firmware", value: detail.firmwareVersion },
+                    { label: "Installed", value: formatDate(detail.installedDate) },
+                  ],
+                },
+                {
+                  title: "Capacity",
+                  rows: [
+                    {
+                      label: "Channels",
+                      value: `${detail.channelsUsed} / ${detail.channelsTotal}`,
+                    },
+                    {
+                      label: "Storage",
+                      value: `${detail.storageUsedTb} / ${detail.storageTotalTb} TB`,
+                    },
+                    { label: "Retention", value: `${detail.recordingRetentionDays} days` },
+                    { label: "Location", value: detail.location },
+                  ],
+                },
+                {
+                  title: `Connected cameras (${connectedCameras.length})`,
+                  rows: connectedCameras.length
+                    ? connectedCameras.map((c) => ({
+                        label: (
+                          <span className="flex items-center gap-2">
+                            <Camera className="h-3.5 w-3.5 text-muted-foreground" />
+                            {c.name}
+                          </span>
+                        ),
+                        value: (
+                          <span className="flex items-center justify-end gap-2">
+                            <span className="max-w-[130px] truncate text-muted-foreground">
+                              {c.zone}
+                            </span>
+                            <StatusBadge status={c.status} withDot={false} />
+                          </span>
+                        ),
+                      }))
+                    : [
+                        {
+                          label: "—",
+                          value: (
+                            <span className="text-muted-foreground">No cameras connected</span>
+                          ),
+                        },
+                      ],
+                },
+              ]
+            : []
+        }
+        footer={
+          detail && (
+            <>
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Close
+              </Button>
+              <Button onClick={() => toast.success(`Opening ${detail.name} console (demo)`)}>
+                <Server className="h-4 w-4" /> Manage
               </Button>
             </>
           )

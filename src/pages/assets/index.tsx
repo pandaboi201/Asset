@@ -1,11 +1,6 @@
 import { useMemo, useState } from "react";
-import {
-  CircleCheck,
-  DollarSign,
-  Laptop,
-  Plus,
-  Wrench,
-} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { CircleCheck, Laptop, PackageCheck, Plus, Wrench } from "lucide-react";
 
 import type { Asset } from "@/types";
 import { PageHeader } from "@/components/shared/page-header";
@@ -21,20 +16,17 @@ import {
   ASSET_CATEGORY_OPTIONS,
   ASSET_STATUS_OPTIONS,
 } from "@/data/assets";
-import { formatCompactNumber } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 import { createAssetColumns } from "./asset-columns";
 import { AssetFormDialog, type AssetFormValues } from "./asset-form-dialog";
-import { AssetDetailSheet } from "./asset-detail-sheet";
 
 export function AssetsPage() {
+  const navigate = useNavigate();
   const { data, loading, refetch } = useAsync(() => assetService.all(), []);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [category, setCategory] = useState("");
 
-  const [detail, setDetail] = useState<Asset | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Asset | null>(null);
   const [toDelete, setToDelete] = useState<Asset | null>(null);
@@ -56,29 +48,25 @@ export function AssetsPage() {
     });
   }, [assets, search, status, category]);
 
-  const stats = useMemo(() => {
-    const value = assets.reduce((s, a) => s + a.currentValue, 0);
-    return {
+  const stats = useMemo(
+    () => ({
       total: assets.length,
       inUse: assets.filter((a) => a.status === "in-use").length,
+      available: assets.filter((a) => a.status === "available").length,
       servicing: assets.filter(
         (a) => a.status === "in-repair" || a.status === "maintenance",
       ).length,
-      value,
-    };
-  }, [assets]);
+    }),
+    [assets],
+  );
 
-  const openView = (asset: Asset) => {
-    setDetail(asset);
-    setDetailOpen(true);
-  };
+  const openView = (asset: Asset) => navigate(`/assets/${asset.id}`);
   const openCreate = () => {
     setEditing(null);
     setFormOpen(true);
   };
   const openEdit = (asset: Asset) => {
     setEditing(asset);
-    setDetailOpen(false);
     setFormOpen(true);
   };
 
@@ -102,7 +90,6 @@ export function AssetsPage() {
         ...values,
         id: `ast-${Date.now()}`,
         assignedTo: null,
-        currentValue: values.purchaseCost,
         purchaseDate: now,
         warrantyExpiry: now,
         createdAt: now,
@@ -148,17 +135,17 @@ export function AssetsPage() {
           loading={loading}
         />
         <MiniStat
+          label="Available"
+          value={stats.available}
+          tone="success"
+          icon={<PackageCheck className="h-5 w-5" />}
+          loading={loading}
+        />
+        <MiniStat
           label="In service"
           value={stats.servicing}
           tone="warning"
           icon={<Wrench className="h-5 w-5" />}
-          loading={loading}
-        />
-        <MiniStat
-          label="Fleet value"
-          value={`$${formatCompactNumber(stats.value)}`}
-          tone="success"
-          icon={<DollarSign className="h-5 w-5" />}
           loading={loading}
         />
       </div>
@@ -200,12 +187,6 @@ export function AssetsPage() {
         }
       />
 
-      <AssetDetailSheet
-        asset={detail}
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
-        onEdit={openEdit}
-      />
       <AssetFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}

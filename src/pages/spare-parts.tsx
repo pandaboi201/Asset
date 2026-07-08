@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
+  Cpu,
   MoreHorizontal,
   PackageSearch,
   PackageX,
@@ -9,7 +11,7 @@ import {
   Boxes,
 } from "lucide-react";
 
-import type { SparePart } from "@/types";
+import type { PartInstallation, SparePart } from "@/types";
 import { PageHeader } from "@/components/shared/page-header";
 import { MiniStat } from "@/components/shared/mini-stat";
 import { SearchInput } from "@/components/shared/search-input";
@@ -27,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAsync } from "@/hooks/use-async";
-import { sparePartService } from "@/services";
+import { partInstallationService, sparePartService } from "@/services";
 import { SPARE_PART_CATEGORY_OPTIONS } from "@/data/spare-parts";
 import { formatCompactNumber, formatCurrency, formatDate } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
@@ -40,6 +42,7 @@ const STATUS_OPTIONS = [
 
 export function SparePartsPage() {
   const { data, loading, refetch } = useAsync(() => sparePartService.all(), []);
+  const installsQ = useAsync(() => partInstallationService.all(), []);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [status, setStatus] = useState("");
@@ -47,6 +50,22 @@ export function SparePartsPage() {
   const [open, setOpen] = useState(false);
 
   const parts = data ?? [];
+
+  /** Map of partId -> installations (which devices the part went into). */
+  const installsByPart = useMemo(() => {
+    const map = new Map<string, PartInstallation[]>();
+    for (const inst of installsQ.data ?? []) {
+      const arr = map.get(inst.partId) ?? [];
+      arr.push(inst);
+      map.set(inst.partId, arr);
+    }
+    for (const list of map.values()) {
+      list.sort((a, b) => +new Date(b.installedAt) - +new Date(a.installedAt));
+    }
+    return map;
+  }, [installsQ.data]);
+
+  const detailInstalls = detail ? (installsByPart.get(detail.id) ?? []) : [];
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -139,6 +158,23 @@ export function SparePartsPage() {
         meta: { label: "Qty" },
       },
       {
+        id: "installed",
+        enableSorting: false,
+        header: "Installed",
+        cell: ({ row }) => {
+          const count = installsByPart.get(row.original.id)?.length ?? 0;
+          return (
+            <span className="inline-flex items-center gap-1.5 text-sm">
+              <Cpu className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className={count === 0 ? "text-muted-foreground" : "font-medium"}>
+                {count}
+              </span>
+            </span>
+          );
+        },
+        meta: { label: "Installed" },
+      },
+      {
         accessorKey: "unitCost",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Unit cost" className="justify-end" />,
         cell: ({ row }) => (
@@ -185,8 +221,7 @@ export function SparePartsPage() {
         size: 48,
       },
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [installsByPart],
   );
 
   return (
@@ -268,6 +303,42 @@ export function SparePartsPage() {
                       ),
                     },
                   ],
+                },
+                {
+                  title: `Installed on devices (${detailInstalls.length})`,
+                  rows: detailInstalls.length
+                    ? detailInstalls.map((inst) => ({
+                        label: (
+                          <Link
+                            to={`/assets/${inst.assetId}`}
+                            className="font-mono text-xs text-foreground hover:text-primary hover:underline"
+                          >
+                            {inst.assetTag}
+                          </Link>
+                        ),
+                        value: (
+                          <span className="flex flex-col items-end">
+                            <span className="max-w-[170px] truncate text-muted-foreground">
+                              {inst.assetName}
+                              {inst.quantity > 1 ? ` ×${inst.quantity}` : ""}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground/70">
+                              {formatDate(inst.installedAt)}
+                              {inst.repairTicketNumber ? ` · ${inst.repairTicketNumber}` : ""}
+                            </span>
+                          </span>
+                        ),
+                      }))
+                    : [
+                        {
+                          label: "—",
+                          value: (
+                            <span className="text-muted-foreground">
+                              Not yet installed on any device
+                            </span>
+                          ),
+                        },
+                      ],
                 },
               ]
             : []
