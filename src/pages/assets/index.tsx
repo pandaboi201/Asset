@@ -1,0 +1,226 @@
+import { useMemo, useState } from "react";
+import {
+  CircleCheck,
+  DollarSign,
+  Laptop,
+  Plus,
+  Wrench,
+} from "lucide-react";
+
+import type { Asset } from "@/types";
+import { PageHeader } from "@/components/shared/page-header";
+import { MiniStat } from "@/components/shared/mini-stat";
+import { SearchInput } from "@/components/shared/search-input";
+import { FilterSelect } from "@/components/shared/filter-select";
+import { DataTable } from "@/components/shared/data-table";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { Button } from "@/components/ui/button";
+import { useAsync } from "@/hooks/use-async";
+import { assetService } from "@/services";
+import {
+  ASSET_CATEGORY_OPTIONS,
+  ASSET_STATUS_OPTIONS,
+} from "@/data/assets";
+import { formatCompactNumber } from "@/lib/format";
+import { toast } from "@/components/ui/sonner";
+import { createAssetColumns } from "./asset-columns";
+import { AssetFormDialog, type AssetFormValues } from "./asset-form-dialog";
+import { AssetDetailSheet } from "./asset-detail-sheet";
+
+export function AssetsPage() {
+  const { data, loading, refetch } = useAsync(() => assetService.all(), []);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [category, setCategory] = useState("");
+
+  const [detail, setDetail] = useState<Asset | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Asset | null>(null);
+  const [toDelete, setToDelete] = useState<Asset | null>(null);
+
+  const assets = data ?? [];
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return assets.filter((a) => {
+      const matchesSearch =
+        !q ||
+        [a.name, a.assetTag, a.serialNumber, a.assignedTo?.name ?? ""]
+          .join(" ")
+          .toLowerCase()
+          .includes(q);
+      const matchesStatus = !status || a.status === status;
+      const matchesCategory = !category || a.category === category;
+      return matchesSearch && matchesStatus && matchesCategory;
+    });
+  }, [assets, search, status, category]);
+
+  const stats = useMemo(() => {
+    const value = assets.reduce((s, a) => s + a.currentValue, 0);
+    return {
+      total: assets.length,
+      inUse: assets.filter((a) => a.status === "in-use").length,
+      servicing: assets.filter(
+        (a) => a.status === "in-repair" || a.status === "maintenance",
+      ).length,
+      value,
+    };
+  }, [assets]);
+
+  const openView = (asset: Asset) => {
+    setDetail(asset);
+    setDetailOpen(true);
+  };
+  const openCreate = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+  const openEdit = (asset: Asset) => {
+    setEditing(asset);
+    setDetailOpen(false);
+    setFormOpen(true);
+  };
+
+  const columns = useMemo(
+    () =>
+      createAssetColumns({
+        onView: openView,
+        onEdit: openEdit,
+        onDelete: (a) => setToDelete(a),
+      }),
+    [],
+  );
+
+  const handleSubmit = async (values: AssetFormValues) => {
+    if (editing) {
+      await assetService.update(editing.id, values as Partial<Asset>);
+      toast.success("Asset updated");
+    } else {
+      const now = new Date().toISOString();
+      await assetService.create({
+        ...values,
+        id: `ast-${Date.now()}`,
+        assignedTo: null,
+        currentValue: values.purchaseCost,
+        purchaseDate: now,
+        warrantyExpiry: now,
+        createdAt: now,
+        updatedAt: now,
+      } as unknown as Asset);
+      toast.success("Asset created");
+    }
+    refetch();
+  };
+
+  const handleDelete = async () => {
+    if (!toDelete) return;
+    await assetService.remove(toDelete.id);
+    toast.success(`${toDelete.assetTag} deleted`);
+    setToDelete(null);
+    refetch();
+  };
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Asset Management"
+        description="Track, assign and audit every hardware asset across your organization."
+        icon={<Laptop className="h-5 w-5" />}
+      >
+        <Button onClick={openCreate}>
+          <Plus className="h-4 w-4" /> Add Asset
+        </Button>
+      </PageHeader>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MiniStat
+          label="Total assets"
+          value={stats.total}
+          icon={<Laptop className="h-5 w-5" />}
+          loading={loading}
+        />
+        <MiniStat
+          label="In use"
+          value={stats.inUse}
+          tone="info"
+          icon={<CircleCheck className="h-5 w-5" />}
+          loading={loading}
+        />
+        <MiniStat
+          label="In service"
+          value={stats.servicing}
+          tone="warning"
+          icon={<Wrench className="h-5 w-5" />}
+          loading={loading}
+        />
+        <MiniStat
+          label="Fleet value"
+          value={`$${formatCompactNumber(stats.value)}`}
+          tone="success"
+          icon={<DollarSign className="h-5 w-5" />}
+          loading={loading}
+        />
+      </div>
+
+      <DataTable
+        columns={columns}
+        data={filtered}
+        loading={loading}
+        getRowId={(row) => row.id}
+        onRowClick={openView}
+        emptyTitle="No assets found"
+        emptyDescription="Add your first asset or adjust the filters above."
+        toolbar={
+          <>
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Search assets, tags, serials..."
+              className="w-full sm:w-72"
+            />
+            <FilterSelect
+              value={status}
+              onChange={setStatus}
+              options={ASSET_STATUS_OPTIONS.map((s) => ({
+                label: s.replace("-", " "),
+                value: s,
+              }))}
+              allLabel="All statuses"
+              placeholder="Status"
+            />
+            <FilterSelect
+              value={category}
+              onChange={setCategory}
+              options={[...ASSET_CATEGORY_OPTIONS]}
+              allLabel="All categories"
+              placeholder="Category"
+            />
+          </>
+        }
+      />
+
+      <AssetDetailSheet
+        asset={detail}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onEdit={openEdit}
+      />
+      <AssetFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        asset={editing}
+        onSubmit={handleSubmit}
+      />
+      <ConfirmDialog
+        open={Boolean(toDelete)}
+        onOpenChange={(o) => !o && setToDelete(null)}
+        title="Delete asset?"
+        description={`This will permanently remove ${toDelete?.name} (${toDelete?.assetTag}) from the inventory. This action cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={handleDelete}
+      />
+    </div>
+  );
+}
