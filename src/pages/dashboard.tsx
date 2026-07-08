@@ -1,7 +1,5 @@
 import { Link } from "react-router-dom";
 import {
-  Area,
-  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -48,11 +46,7 @@ import {
   notificationService,
   repairService,
 } from "@/services";
-import {
-  formatCompactNumber,
-  formatCurrency,
-  getInitials,
-} from "@/lib/format";
+import { getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 
 const KPI_ICONS: Record<string, React.ReactNode> = {
@@ -66,7 +60,7 @@ const KPI_ICONS: Record<string, React.ReactNode> = {
 export function DashboardPage() {
   const kpis = useAsync(() => dashboardService.kpis(), []);
   const assetTrend = useAsync(() => dashboardService.assetTrend(), []);
-  const spendTrend = useAsync(() => dashboardService.spendTrend(), []);
+  const byDepartment = useAsync(() => dashboardService.assetsByDepartment(), []);
   const byCategory = useAsync(() => dashboardService.assetsByCategory(), []);
   const byStatus = useAsync(() => dashboardService.assetsByStatus(), []);
   const activity = useAsync(() => notificationService.activity(), []);
@@ -115,42 +109,37 @@ export function DashboardPage() {
 
       {/* Trend charts */}
       <div className="grid gap-4 lg:grid-cols-3">
-        {spendTrend.loading || !spendTrend.data ? (
+        {byDepartment.loading || !byDepartment.data ? (
           <ChartCardSkeleton className="lg:col-span-2" />
         ) : (
           <ChartCard
-            title="IT Spend Breakdown"
-            description="Procurement, maintenance and repair costs over time"
+            title="Assets by Department"
+            description="How devices are allocated across teams"
             className="lg:col-span-2"
           >
             <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={spendTrend.data} margin={{ left: -8, right: 8, top: 8 }}>
-                <defs>
-                  {["procurement", "maintenance", "repairs"].map((k, i) => (
-                    <linearGradient key={k} id={`g-${k}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={`hsl(var(--chart-${i + 1}))`} stopOpacity={0.35} />
-                      <stop offset="100%" stopColor={`hsl(var(--chart-${i + 1}))`} stopOpacity={0} />
-                    </linearGradient>
-                  ))}
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+              <BarChart
+                data={byDepartment.data}
+                layout="vertical"
+                margin={{ left: 24, right: 16, top: 8 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                <XAxis type="number" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
                 <YAxis
+                  type="category"
+                  dataKey="name"
                   tickLine={false}
                   axisLine={false}
                   tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-                  tickFormatter={(v) => `$${formatCompactNumber(Number(v))}`}
-                  width={56}
+                  width={120}
                 />
-                <Tooltip
-                  content={<ChartTooltip valueFormatter={(v) => formatCurrency(v)} />}
-                  cursor={{ stroke: "hsl(var(--border))" }}
-                />
-                <Area type="monotone" dataKey="procurement" stroke="hsl(var(--chart-1))" strokeWidth={2} fill="url(#g-procurement)" />
-                <Area type="monotone" dataKey="maintenance" stroke="hsl(var(--chart-2))" strokeWidth={2} fill="url(#g-maintenance)" />
-                <Area type="monotone" dataKey="repairs" stroke="hsl(var(--chart-3))" strokeWidth={2} fill="url(#g-repairs)" />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
-              </AreaChart>
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted) / 0.4)" }} />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={22}>
+                  {byDepartment.data.map((entry) => (
+                    <Cell key={entry.name} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </ChartCard>
         )}

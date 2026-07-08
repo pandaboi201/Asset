@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAsync } from "@/hooks/use-async";
 import { maintenanceService } from "@/services";
-import { formatCurrency, formatDate, getInitials } from "@/lib/format";
+import { formatDate, getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 
 const STATUS_OPTIONS = [
@@ -82,7 +82,6 @@ export function MaintenancePage() {
     await maintenanceService.update(task.id, {
       status: "completed",
       completedDate: new Date().toISOString(),
-      actualCost: task.estimatedCost,
     });
     toast.success(`${task.reference} marked complete`);
     setOpen(false);
@@ -260,12 +259,10 @@ export function MaintenancePage() {
                   ],
                 },
                 {
-                  title: "Schedule & cost",
+                  title: "Schedule",
                   rows: [
                     { label: "Scheduled", value: formatDate(detail.scheduledDate) },
                     { label: "Completed", value: detail.completedDate ? formatDate(detail.completedDate) : "—" },
-                    { label: "Estimated cost", value: formatCurrency(detail.estimatedCost) },
-                    { label: "Actual cost", value: detail.actualCost != null ? formatCurrency(detail.actualCost) : "—" },
                   ],
                 },
                 { title: "Description", rows: [{ label: "", value: detail.description }] },

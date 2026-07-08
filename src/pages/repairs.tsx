@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAsync } from "@/hooks/use-async";
 import { repairService } from "@/services";
-import { formatCurrency, formatRelativeTime, getInitials } from "@/lib/format";
+import { formatRelativeTime, getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 
 const STATUS_OPTIONS = [
@@ -86,7 +86,6 @@ export function RepairsPage() {
     await repairService.update(ticket.id, {
       status: "repaired",
       resolvedAt: new Date().toISOString(),
-      actualCost: ticket.estimatedCost,
     });
     toast.success(`${ticket.ticketNumber} resolved`);
     setOpen(false);
@@ -259,12 +258,10 @@ export function RepairsPage() {
                   ],
                 },
                 {
-                  title: "Timeline & cost",
+                  title: "Timeline",
                   rows: [
                     { label: "Reported", value: formatRelativeTime(detail.reportedAt) },
                     { label: "Resolved", value: detail.resolvedAt ? formatRelativeTime(detail.resolvedAt) : "—" },
-                    { label: "Estimated cost", value: formatCurrency(detail.estimatedCost) },
-                    { label: "Actual cost", value: detail.actualCost != null ? formatCurrency(detail.actualCost) : "—" },
                     { label: "Vendor", value: detail.vendor ?? "—" },
                   ],
                 },

@@ -5,13 +5,19 @@ import {
   Calendar,
   Cpu,
   MapPin,
+  PackagePlus,
   Pencil,
+  Trash2,
   User as UserIcon,
 } from "lucide-react";
 
 import type { Asset } from "@/types";
 import { useAsync } from "@/hooks/use-async";
-import { assetService, getAssetHistory } from "@/services";
+import {
+  assetService,
+  getAssetHistory,
+  partInstallationService,
+} from "@/services";
 import { formatDate, getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 
@@ -37,6 +43,7 @@ import {
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { HistoryTimeline } from "@/components/shared/history-timeline";
+import { InstallPartDialog } from "@/components/shared/install-part-dialog";
 import { ListSkeleton } from "@/components/shared/loading";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AssetFormDialog, type AssetFormValues } from "./asset-form-dialog";
@@ -65,6 +72,7 @@ export function AssetDetailPage() {
   const { assetId = "" } = useParams();
   const navigate = useNavigate();
   const [formOpen, setFormOpen] = useState(false);
+  const [installOpen, setInstallOpen] = useState(false);
 
   const { data, loading, refetch } = useAsync(async () => {
     const asset = await assetService.getById(assetId);
@@ -80,6 +88,12 @@ export function AssetDetailPage() {
     if (!asset) return;
     await assetService.update(asset.id, values as Partial<Asset>);
     toast.success("Asset updated");
+    refetch();
+  };
+
+  const removeInstall = async (id: string) => {
+    await partInstallationService.remove(id);
+    toast.success("Part installation removed");
     refetch();
   };
 
@@ -319,8 +333,21 @@ export function AssetDetailPage() {
             </TabsContent>
 
             <TabsContent value="parts">
+              <div className="mb-3 flex items-center justify-end">
+                <Button size="sm" variant="outline" onClick={() => setInstallOpen(true)}>
+                  <PackagePlus className="h-4 w-4" /> Install part
+                </Button>
+              </div>
               {counts.parts === 0 ? (
-                <EmptyState title="No parts installed" description="No spare parts have been fitted to this device." />
+                <EmptyState
+                  title="No parts installed"
+                  description="No spare parts have been fitted to this device."
+                  action={
+                    <Button size="sm" variant="outline" onClick={() => setInstallOpen(true)}>
+                      <PackagePlus className="h-4 w-4" /> Install part
+                    </Button>
+                  }
+                />
               ) : (
                 <Table>
                   <TableHeader>
@@ -331,6 +358,7 @@ export function AssetDetailPage() {
                       <TableHead>Installed by</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Ref</TableHead>
+                      <TableHead className="text-right">Remove</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -342,6 +370,17 @@ export function AssetDetailPage() {
                         <TableCell className="text-muted-foreground">{p.installedBy.name}</TableCell>
                         <TableCell className="text-muted-foreground">{formatDate(p.installedAt)}</TableCell>
                         <TableCell className="font-mono text-xs text-muted-foreground">{p.repairTicketNumber ?? "—"}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() => removeInstall(p.id)}
+                            aria-label="Remove part installation"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -357,6 +396,13 @@ export function AssetDetailPage() {
         onOpenChange={setFormOpen}
         asset={asset}
         onSubmit={handleSubmit}
+      />
+
+      <InstallPartDialog
+        open={installOpen}
+        onOpenChange={setInstallOpen}
+        fixedAsset={asset}
+        onCreated={refetch}
       />
     </div>
   );
