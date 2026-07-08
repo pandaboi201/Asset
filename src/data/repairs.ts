@@ -1,5 +1,5 @@
 import type { Priority, RepairStatus, RepairTicket } from "@/types";
-import { chance, dateFromNow, money, pick, randInt } from "./seed";
+import { chance, dateFromNow, pick, randInt } from "./seed";
 import { assets } from "./assets";
 import { users } from "./users";
 
@@ -36,7 +36,6 @@ export const repairTickets: RepairTicket[] = Array.from({ length: 30 }).map(
     const status = pick(STATUSES);
     const resolved = status === "repaired" || status === "unrepairable";
     const reportedDays = randInt(1, 90);
-    const estimatedCost = money(50, 900);
     const assignTech =
       status === "reported" ? (chance(0.4) ? pick(technicians) : null) : pick(technicians);
 
@@ -58,8 +57,6 @@ export const repairTickets: RepairTicket[] = Array.from({ length: 30 }).map(
       priority: pick(PRIORITIES),
       reportedAt: dateFromNow(-reportedDays),
       resolvedAt: resolved ? dateFromNow(-randInt(0, reportedDays)) : null,
-      estimatedCost,
-      actualCost: resolved ? Math.round(estimatedCost * (0.7 + (i % 5) * 0.1)) : null,
       vendor: pick(VENDORS),
       slaHours: pick([24, 48, 72, 96]),
     } satisfies RepairTicket;
