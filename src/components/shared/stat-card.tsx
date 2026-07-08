@@ -5,18 +5,11 @@ import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import {
-  formatCompactNumber,
-  formatCurrency,
-  formatNumber,
-  formatPercent,
-} from "@/lib/format";
+import { formatNumber, formatPercent } from "@/lib/format";
 import type { KpiMetric } from "@/types";
 
 function formatValue(value: number, format: KpiMetric["format"]): string {
   switch (format) {
-    case "currency":
-      return value >= 100000 ? `$${formatCompactNumber(value)}` : formatCurrency(value);
     case "percent":
       return formatPercent(value);
     default:

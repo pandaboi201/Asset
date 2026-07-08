@@ -4,7 +4,7 @@ import type {
   MaintenanceType,
   Priority,
 } from "@/types";
-import { chance, dateFromNow, money, pick, randInt } from "./seed";
+import { chance, dateFromNow, pick, randInt } from "./seed";
 import { assets } from "./assets";
 import { users } from "./users";
 
@@ -41,7 +41,6 @@ export const maintenanceTasks: MaintenanceTask[] = Array.from({
   else status = chance(0.3) ? "in-progress" : "scheduled";
   if (chance(0.06)) status = "cancelled";
 
-  const estimatedCost = money(80, 1200);
   const completed = status === "completed";
 
   return {
@@ -56,8 +55,6 @@ export const maintenanceTasks: MaintenanceTask[] = Array.from({
     assignedTo: { id: tech.id, name: tech.name, avatarUrl: tech.avatarUrl },
     scheduledDate: dateFromNow(scheduledOffset),
     completedDate: completed ? dateFromNow(scheduledOffset + randInt(0, 3)) : null,
-    estimatedCost,
-    actualCost: completed ? Math.round(estimatedCost * (0.8 + Math.random() * 0.5)) : null,
     vendor: pick(VENDORS),
     description:
       "Routine service performed according to the maintenance policy and manufacturer guidelines.",

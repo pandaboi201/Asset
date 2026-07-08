@@ -4,9 +4,11 @@ import type { ColumnDef } from "@tanstack/react-table";
 import {
   Cpu,
   MoreHorizontal,
+  PackagePlus,
   PackageSearch,
   PackageX,
   Plus,
+  Trash2,
   TriangleAlert,
   Boxes,
 } from "lucide-react";
@@ -19,6 +21,7 @@ import { FilterSelect } from "@/components/shared/filter-select";
 import { DataTable, DataTableColumnHeader } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { DetailSheet } from "@/components/shared/detail-sheet";
+import { InstallPartDialog } from "@/components/shared/install-part-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -31,7 +34,7 @@ import {
 import { useAsync } from "@/hooks/use-async";
 import { partInstallationService, sparePartService } from "@/services";
 import { SPARE_PART_CATEGORY_OPTIONS } from "@/data/spare-parts";
-import { formatCompactNumber, formatCurrency, formatDate } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 
 const STATUS_OPTIONS = [
@@ -48,8 +51,15 @@ export function SparePartsPage() {
   const [status, setStatus] = useState("");
   const [detail, setDetail] = useState<SparePart | null>(null);
   const [open, setOpen] = useState(false);
+  const [installOpen, setInstallOpen] = useState(false);
 
   const parts = data ?? [];
+
+  const removeInstall = async (id: string) => {
+    await partInstallationService.remove(id);
+    toast.success("Installation record removed");
+    installsQ.refetch();
+  };
 
   /** Map of partId -> installations (which devices the part went into). */
   const installsByPart = useMemo(() => {
@@ -86,7 +96,7 @@ export function SparePartsPage() {
       total: parts.length,
       low: parts.filter((p) => p.status === "low-stock").length,
       out: parts.filter((p) => p.status === "out-of-stock").length,
-      value: parts.reduce((s, p) => s + p.quantity * p.unitCost, 0),
+      inStock: parts.filter((p) => p.status === "in-stock").length,
     }),
     [parts],
   );
@@ -175,16 +185,6 @@ export function SparePartsPage() {
         meta: { label: "Installed" },
       },
       {
-        accessorKey: "unitCost",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Unit cost" className="justify-end" />,
-        cell: ({ row }) => (
-          <div className="text-right tabular-nums">
-            {formatCurrency(row.original.unitCost)}
-          </div>
-        ),
-        meta: { label: "Unit cost" },
-      },
-      {
         accessorKey: "status",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
         cell: ({ row }) => <StatusBadge status={row.original.status} />,
@@ -240,7 +240,7 @@ export function SparePartsPage() {
         <MiniStat label="Total parts" value={stats.total} icon={<PackageSearch className="h-5 w-5" />} loading={loading} />
         <MiniStat label="Low stock" value={stats.low} tone="warning" icon={<TriangleAlert className="h-5 w-5" />} loading={loading} />
         <MiniStat label="Out of stock" value={stats.out} tone="destructive" icon={<PackageX className="h-5 w-5" />} loading={loading} />
-        <MiniStat label="Stock value" value={`$${formatCompactNumber(stats.value)}`} tone="success" icon={<Boxes className="h-5 w-5" />} loading={loading} />
+        <MiniStat label="In stock" value={stats.inStock} tone="success" icon={<Boxes className="h-5 w-5" />} loading={loading} />
       </div>
 
       <DataTable
@@ -281,7 +281,6 @@ export function SparePartsPage() {
                   rows: [
                     { label: "Quantity", value: detail.quantity },
                     { label: "Reorder level", value: detail.reorderLevel },
-                    { label: "Unit cost", value: formatCurrency(detail.unitCost) },
                     { label: "Location", value: detail.location },
                     { label: "Supplier", value: detail.supplier },
                     { label: "Updated", value: formatDate(detail.updatedAt) },
@@ -317,15 +316,26 @@ export function SparePartsPage() {
                           </Link>
                         ),
                         value: (
-                          <span className="flex flex-col items-end">
-                            <span className="max-w-[170px] truncate text-muted-foreground">
-                              {inst.assetName}
-                              {inst.quantity > 1 ? ` ×${inst.quantity}` : ""}
+                          <span className="flex items-center justify-end gap-1.5">
+                            <span className="flex flex-col items-end">
+                              <span className="max-w-[150px] truncate text-muted-foreground">
+                                {inst.assetName}
+                                {inst.quantity > 1 ? ` ×${inst.quantity}` : ""}
+                              </span>
+                              <span className="text-[11px] text-muted-foreground/70">
+                                {formatDate(inst.installedAt)}
+                                {inst.repairTicketNumber ? ` · ${inst.repairTicketNumber}` : ""}
+                              </span>
                             </span>
-                            <span className="text-[11px] text-muted-foreground/70">
-                              {formatDate(inst.installedAt)}
-                              {inst.repairTicketNumber ? ` · ${inst.repairTicketNumber}` : ""}
-                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-muted-foreground hover:text-destructive"
+                              onClick={() => removeInstall(inst.id)}
+                              aria-label="Remove installation"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                           </span>
                         ),
                       }))
@@ -349,10 +359,20 @@ export function SparePartsPage() {
               <Button variant="outline" onClick={() => setOpen(false)}>
                 Close
               </Button>
+              <Button variant="outline" onClick={() => setInstallOpen(true)}>
+                <PackagePlus className="h-4 w-4" /> Install to device
+              </Button>
               <Button onClick={() => reorder(detail)}>Reorder</Button>
             </>
           )
         }
+      />
+
+      <InstallPartDialog
+        open={installOpen}
+        onOpenChange={setInstallOpen}
+        fixedPart={detail}
+        onCreated={() => installsQ.refetch()}
       />
     </div>
   );

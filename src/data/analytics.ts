@@ -80,15 +80,6 @@ export const assetTrend: TimeSeriesPoint[] = MONTHS.slice(0, 9).map(
   }),
 );
 
-export const spendTrend: TimeSeriesPoint[] = MONTHS.slice(0, 9).map(
-  (m, i) => ({
-    date: m,
-    procurement: 24000 + Math.round(Math.sin(i) * 8000 + i * 1500),
-    maintenance: 6000 + Math.round(Math.cos(i / 1.5) * 2200 + i * 400),
-    repairs: 3200 + Math.round(Math.sin(i / 1.3) * 1400 + i * 250),
-  }),
-);
-
 function countBy<T>(items: T[], key: (item: T) => string): CategoryDatum[] {
   const map = new Map<string, number>();
   for (const item of items) {

@@ -33,7 +33,6 @@ import {
   assetsByStatus,
   kpiMetrics,
   maintenanceByStatus,
-  spendTrend,
 } from "@/data/analytics";
 
 import { createCollectionService, delay } from "./http";
@@ -234,7 +233,6 @@ export const notificationService = {
 export const dashboardService = {
   kpis: () => delay(kpiMetrics),
   assetTrend: () => delay(assetTrend),
-  spendTrend: () => delay(spendTrend),
   assetsByCategory: () => delay(assetsByCategory),
   assetsByStatus: () => delay(assetsByStatus),
   assetsByDepartment: () => delay(assetsByDepartment),

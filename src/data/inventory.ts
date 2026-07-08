@@ -1,5 +1,5 @@
 import type { InventoryItem, InventoryStatus } from "@/types";
-import { dateFromNow, money, pick, randInt } from "./seed";
+import { dateFromNow, pick, randInt } from "./seed";
 
 const ITEMS = [
   { name: "USB-C Charger 96W", category: "Chargers" },
@@ -46,7 +46,6 @@ export const inventory: InventoryItem[] = ITEMS.flatMap((item, idx) => {
       category: item.category,
       quantity,
       reorderLevel,
-      unitCost: money(8, 320),
       location: `Aisle ${randInt(1, 12)}-${String.fromCharCode(65 + randInt(0, 5))}`,
       warehouse: pick(WAREHOUSES),
       supplier: pick(SUPPLIERS),

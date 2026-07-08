@@ -1,22 +1,5 @@
 import { format, formatDistanceToNow, isValid, parseISO } from "date-fns";
 
-/** Format a number as USD currency. */
-export function formatCurrency(value: number, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-/** Compact number formatting, e.g. 12.4K, 1.2M. */
-export function formatCompactNumber(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(value);
-}
-
 /** Standard integer formatting with thousands separators. */
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat("en-US").format(value);

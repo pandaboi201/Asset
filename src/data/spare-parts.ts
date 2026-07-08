@@ -1,5 +1,5 @@
 import type { SparePart, SparePartStatus } from "@/types";
-import { dateFromNow, money, pick, pickMany, randInt } from "./seed";
+import { dateFromNow, pick, pickMany, randInt } from "./seed";
 
 const PARTS = [
   { name: "Laptop Battery (Li-Ion)", category: "Power" },
@@ -43,7 +43,6 @@ export const spareParts: SparePart[] = PARTS.map((part, i) => {
     compatibleWith: pickMany(COMPATIBLE, randInt(1, 3)),
     quantity,
     reorderLevel,
-    unitCost: money(12, 480),
     supplier: pick(SUPPLIERS),
     location: `Bin ${String.fromCharCode(65 + (i % 6))}-${randInt(1, 24)}`,
     status: statusFor(quantity, reorderLevel),

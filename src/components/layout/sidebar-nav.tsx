@@ -47,7 +47,7 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
                     {isActive && (
                       <motion.span
                         layoutId="sidebar-active"
-                        className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-sidebar-accent"
+                        className="absolute left-0 inset-y-1.5 w-1 rounded-r-full bg-sidebar-accent"
                         transition={{ type: "spring", stiffness: 400, damping: 32 }}
                       />
                     )}

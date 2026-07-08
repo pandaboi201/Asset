@@ -17,7 +17,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { BarChart3, Download, FileSpreadsheet, Share2 } from "lucide-react";
+import { BarChart3, Download, Share2 } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { ChartCard } from "@/components/shared/chart-card";
@@ -37,9 +37,7 @@ import {
   assetsByDepartment,
   assetsByStatus,
   maintenanceByStatus,
-  spendTrend,
 } from "@/data/analytics";
-import { formatCompactNumber, formatCurrency } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 
 const AXIS = { fontSize: 12, fill: "hsl(var(--muted-foreground))" };
@@ -88,7 +86,6 @@ export function ReportsPage() {
         <TabsList className="flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="assets">Assets</TabsTrigger>
-          <TabsTrigger value="financials">Financials</TabsTrigger>
           <TabsTrigger value="operations">Operations</TabsTrigger>
         </TabsList>
 
@@ -96,23 +93,29 @@ export function ReportsPage() {
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-3">
             <ChartCard
-              title="Spend Over Time"
-              description="Total IT expenditure trend"
+              title="Fleet Growth"
+              description="Devices acquired vs retired over time"
               className="lg:col-span-2"
             >
               <ResponsiveContainer width="100%" height={280}>
-                <AreaChart data={spendTrend} margin={{ left: -8, right: 8, top: 8 }}>
+                <AreaChart data={assetTrend} margin={{ left: -8, right: 8, top: 8 }}>
                   <defs>
-                    <linearGradient id="rep-spend" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="rep-acq" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.35} />
                       <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="rep-ret" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--chart-4))" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="hsl(var(--chart-4))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis dataKey="date" tickLine={false} axisLine={false} tick={AXIS} />
-                  <YAxis tickLine={false} axisLine={false} tick={AXIS} width={56} tickFormatter={(v) => `$${formatCompactNumber(Number(v))}`} />
-                  <Tooltip content={<ChartTooltip valueFormatter={(v) => formatCurrency(v)} />} />
-                  <Area type="monotone" dataKey="procurement" stroke="hsl(var(--chart-1))" strokeWidth={2} fill="url(#rep-spend)" />
+                  <YAxis tickLine={false} axisLine={false} tick={AXIS} width={40} />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+                  <Area type="monotone" dataKey="acquired" stroke="hsl(var(--chart-1))" strokeWidth={2} fill="url(#rep-acq)" />
+                  <Area type="monotone" dataKey="retired" stroke="hsl(var(--chart-4))" strokeWidth={2} fill="url(#rep-ret)" />
                 </AreaChart>
               </ResponsiveContainer>
             </ChartCard>
@@ -211,45 +214,6 @@ export function ReportsPage() {
               </ResponsiveContainer>
             </ChartCard>
           </div>
-        </TabsContent>
-
-        {/* Financials */}
-        <TabsContent value="financials" className="space-y-4">
-          <ChartCard title="Cost Breakdown" description="Procurement, maintenance and repair spend">
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={spendTrend} margin={{ left: -8, right: 8, top: 8 }}>
-                <defs>
-                  {["procurement", "maintenance", "repairs"].map((k, i) => (
-                    <linearGradient key={k} id={`fin-${k}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={`hsl(var(--chart-${i + 1}))`} stopOpacity={0.35} />
-                      <stop offset="100%" stopColor={`hsl(var(--chart-${i + 1}))`} stopOpacity={0} />
-                    </linearGradient>
-                  ))}
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="date" tickLine={false} axisLine={false} tick={AXIS} />
-                <YAxis tickLine={false} axisLine={false} tick={AXIS} width={56} tickFormatter={(v) => `$${formatCompactNumber(Number(v))}`} />
-                <Tooltip content={<ChartTooltip valueFormatter={(v) => formatCurrency(v)} />} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
-                <Area type="monotone" dataKey="procurement" stackId="1" stroke="hsl(var(--chart-1))" strokeWidth={2} fill="url(#fin-procurement)" />
-                <Area type="monotone" dataKey="maintenance" stackId="1" stroke="hsl(var(--chart-2))" strokeWidth={2} fill="url(#fin-maintenance)" />
-                <Area type="monotone" dataKey="repairs" stackId="1" stroke="hsl(var(--chart-3))" strokeWidth={2} fill="url(#fin-repairs)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </ChartCard>
-          <ChartCard
-            title="Export Financial Report"
-            description="Generate a detailed cost report for accounting"
-          >
-            <div className="flex flex-col items-start gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-muted-foreground">
-                Includes depreciation schedule, spend by department and vendor breakdown.
-              </p>
-              <Button variant="outline" onClick={() => toast.success("Generating XLSX (demo)")}>
-                <FileSpreadsheet className="h-4 w-4" /> Download XLSX
-              </Button>
-            </div>
-          </ChartCard>
         </TabsContent>
 
         {/* Operations */}
