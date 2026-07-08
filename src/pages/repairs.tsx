@@ -30,6 +30,7 @@ import { useAsync } from "@/hooks/use-async";
 import { repairService } from "@/services";
 import { formatRelativeTime, getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
+import { RepairFormDialog } from "@/components/forms/repair-form-dialog";
 
 const STATUS_OPTIONS = [
   { label: "Reported", value: "reported" },
@@ -53,6 +54,7 @@ export function RepairsPage() {
   const [priority, setPriority] = useState("");
   const [detail, setDetail] = useState<RepairTicket | null>(null);
   const [open, setOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
 
   const tickets = data ?? [];
 
@@ -203,7 +205,7 @@ export function RepairsPage() {
         description="Track repair tickets, technician workload and SLA compliance."
         icon={<ShieldCheck className="h-5 w-5" />}
       >
-        <Button onClick={() => toast.info("New repair ticket form (demo)")}>
+        <Button onClick={() => setFormOpen(true)}>
           <Plus className="h-4 w-4" /> New Ticket
         </Button>
       </PageHeader>
@@ -238,6 +240,8 @@ export function RepairsPage() {
           </>
         }
       />
+
+      <RepairFormDialog open={formOpen} onOpenChange={setFormOpen} onCreated={refetch} />
 
       <DetailSheet
         open={open}

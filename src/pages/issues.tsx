@@ -30,6 +30,7 @@ import { useAsync } from "@/hooks/use-async";
 import { issueService } from "@/services";
 import { formatDate, getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
+import { IssueFormDialog } from "@/components/forms/issue-form-dialog";
 
 const STATUS_OPTIONS = [
   { label: "Issued", value: "issued" },
@@ -44,6 +45,7 @@ export function IssuesPage() {
   const [status, setStatus] = useState("");
   const [detail, setDetail] = useState<DeviceIssue | null>(null);
   const [open, setOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
 
   const issues = data ?? [];
 
@@ -197,7 +199,7 @@ export function IssuesPage() {
         description="Manage device check-out and check-in across the workforce."
         icon={<ArrowLeftRight className="h-5 w-5" />}
       >
-        <Button onClick={() => toast.info("Issue device form (demo)")}>
+        <Button onClick={() => setFormOpen(true)}>
           <Plus className="h-4 w-4" /> Issue Device
         </Button>
       </PageHeader>
@@ -236,6 +238,8 @@ export function IssuesPage() {
           </>
         }
       />
+
+      <IssueFormDialog open={formOpen} onOpenChange={setFormOpen} onCreated={refetch} />
 
       <DetailSheet
         open={open}

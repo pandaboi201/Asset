@@ -34,6 +34,7 @@ import {
 } from "@/data/inventory";
 import { formatDate } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
+import { InventoryFormDialog } from "@/components/forms/inventory-form-dialog";
 
 export function InventoryPage() {
   const { data, loading, refetch } = useAsync(() => inventoryService.all(), []);
@@ -42,6 +43,7 @@ export function InventoryPage() {
   const [warehouse, setWarehouse] = useState("");
   const [detail, setDetail] = useState<InventoryItem | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
 
   const items = data ?? [];
 
@@ -199,7 +201,7 @@ export function InventoryPage() {
         description="Monitor consumables, stock levels and reorder points across warehouses."
         icon={<Boxes className="h-5 w-5" />}
       >
-        <Button onClick={() => toast.info("New item form (demo)")}>
+        <Button onClick={() => setFormOpen(true)}>
           <PackagePlus className="h-4 w-4" /> Add Item
         </Button>
       </PageHeader>
@@ -243,6 +245,12 @@ export function InventoryPage() {
             />
           </>
         }
+      />
+
+      <InventoryFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        onCreated={refetch}
       />
 
       <DetailSheet

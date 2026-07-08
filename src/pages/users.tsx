@@ -33,6 +33,7 @@ import { DEPARTMENT_OPTIONS } from "@/data/users";
 import { formatDate, formatRelativeTime, getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
+import { UserFormDialog } from "@/components/forms/user-form-dialog";
 
 const ROLE_OPTIONS = [
   { label: "Admin", value: "admin" },
@@ -49,13 +50,14 @@ const ROLE_TONE: Record<string, string> = {
 };
 
 export function UsersPage() {
-  const { data, loading } = useAsync(() => userService.all(), []);
+  const { data, loading, refetch } = useAsync(() => userService.all(), []);
   const assetsQ = useAsync(() => assetService.all(), []);
   const [search, setSearch] = useState("");
   const [role, setRole] = useState("");
   const [department, setDepartment] = useState("");
   const [detail, setDetail] = useState<User | null>(null);
   const [open, setOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
 
   const users = data ?? [];
 
@@ -224,7 +226,7 @@ export function UsersPage() {
         description="Manage team members, roles and access permissions."
         icon={<UsersIcon className="h-5 w-5" />}
       >
-        <Button onClick={() => toast.info("Invite user form (demo)")}>
+        <Button onClick={() => setFormOpen(true)}>
           <UserPlus className="h-4 w-4" /> Invite User
         </Button>
       </PageHeader>
@@ -259,6 +261,8 @@ export function UsersPage() {
           </>
         }
       />
+
+      <UserFormDialog open={formOpen} onOpenChange={setFormOpen} onCreated={refetch} />
 
       <DetailSheet
         open={open}
