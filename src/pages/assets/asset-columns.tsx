@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DataTableColumnHeader } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { formatCurrency, formatDate, getInitials } from "@/lib/format";
+import { formatDate, getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 
 interface ColumnHandlers {
@@ -136,18 +136,6 @@ export function createAssetColumns({
         </span>
       ),
       meta: { label: "Location" },
-    },
-    {
-      accessorKey: "currentValue",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Value" className="justify-end" />
-      ),
-      cell: ({ row }) => (
-        <div className="text-right font-medium tabular-nums">
-          {formatCurrency(row.original.currentValue)}
-        </div>
-      ),
-      meta: { label: "Value" },
     },
     {
       accessorKey: "warrantyExpiry",

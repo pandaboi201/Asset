@@ -4,7 +4,7 @@ import type {
   AssetCondition,
   AssetStatus,
 } from "@/types";
-import { chance, dateFromNow, money, pick, randInt } from "./seed";
+import { chance, dateFromNow, pick, randInt } from "./seed";
 import { users } from "./users";
 
 const CATEGORIES: AssetCategory[] = [
@@ -85,7 +85,6 @@ export const assets: Asset[] = Array.from({ length: 64 }).map((_, i) => {
   const category = pick(CATEGORIES);
   const spec = pick(MODELS[category]);
   const status = pick(STATUSES);
-  const purchaseCost = money(spec.cost[0], spec.cost[1]);
   const ageDays = randInt(30, 1500);
   const assignee =
     status === "in-use" && chance(0.9) ? pick(users) : null;
@@ -107,8 +106,6 @@ export const assets: Asset[] = Array.from({ length: 64 }).map((_, i) => {
     department: pick(DEPARTMENTS),
     purchaseDate: dateFromNow(-ageDays),
     warrantyExpiry: dateFromNow(-ageDays + randInt(365, 1460)),
-    purchaseCost,
-    currentValue: Math.round(purchaseCost * (0.35 + (1500 - Math.min(ageDays, 1500)) / 1500 * 0.6)),
     supplier: pick(SUPPLIERS),
     notes: undefined,
     createdAt: dateFromNow(-ageDays),

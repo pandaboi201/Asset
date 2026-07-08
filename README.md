@@ -97,3 +97,25 @@ export const assetService = {
   flow; the Asset module includes a full create/edit form (React Hook Form + Zod)
   and mutations run against the in-memory store so the UI feels live within a
   session (data resets on reload).
+
+
+## Device tracking & relationships (update)
+
+The system now models the relationships between devices, people and parts:
+
+- **Device detail page** (`/assets/:id`) — a full lifecycle view per device with a
+  unified **history timeline** plus dedicated tabs for **issue history**,
+  **repairs**, **upgrades**, and **installed parts**.
+- **Devices per user** — the Users table shows a device count per person and the
+  user detail lists every device assigned to them (each links to its detail page).
+- **Part → device mapping** — Spare Parts show how many devices a part was fitted
+  to, and the detail lists each installation (device + date + repair reference).
+- **NVR management** — CCTV now has a **Recorders (NVR)** tab: recorder health,
+  channel usage, storage, retention and the cameras connected to each NVR.
+- **No monetary asset values** — purchase cost / current value have been removed
+  from the asset model and all asset views per requirements.
+
+New domain types: `DeviceUpgrade`, `PartInstallation`, `Nvr`, `DeviceHistoryEvent`.
+New services: `upgradeService`, `partInstallationService`, `nvrService`, and the
+relationship aggregators `getAssetHistory`, `getUserDevices`, `getPartInstallations`
+and `getNvrCameras` (in `src/services/index.ts`).

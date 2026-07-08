@@ -42,7 +42,6 @@ const assetSchema = z.object({
   condition: z.string().min(1, "Select a condition"),
   location: z.string().min(1, "Select a location"),
   department: z.string().min(1, "Select a department"),
-  purchaseCost: z.coerce.number().min(0, "Must be 0 or more"),
   supplier: z.string().min(1, "Supplier is required"),
   notes: z.string().optional(),
 });
@@ -107,7 +106,6 @@ export function AssetFormDialog({
       condition: "new",
       location: "",
       department: "",
-      purchaseCost: 0,
       supplier: "",
       notes: "",
     },
@@ -128,7 +126,6 @@ export function AssetFormDialog({
               condition: asset.condition,
               location: asset.location,
               department: asset.department,
-              purchaseCost: asset.purchaseCost,
               supplier: asset.supplier,
               notes: asset.notes ?? "",
             }
@@ -236,10 +233,6 @@ export function AssetFormDialog({
                 )}
               />
             </Field>
-            <Field label="Purchase cost (USD)" required error={errors.purchaseCost?.message}>
-              <Input type="number" min={0} step={1} {...register("purchaseCost")} />
-            </Field>
-
             <Field label="Location" required error={errors.location?.message}>
               <Controller
                 control={control}

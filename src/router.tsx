@@ -4,6 +4,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { DashboardPage } from "@/pages/dashboard";
 import { ReportsPage } from "@/pages/reports";
 import { AssetsPage } from "@/pages/assets";
+import { AssetDetailPage } from "@/pages/assets/asset-detail";
 import { InventoryPage } from "@/pages/inventory";
 import { IssuesPage } from "@/pages/issues";
 import { MaintenancePage } from "@/pages/maintenance";
@@ -25,6 +26,7 @@ export const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: "reports", element: <ReportsPage /> },
       { path: "assets", element: <AssetsPage /> },
+      { path: "assets/:assetId", element: <AssetDetailPage /> },
       { path: "inventory", element: <InventoryPage /> },
       { path: "issues", element: <IssuesPage /> },
       { path: "maintenance", element: <MaintenancePage /> },
