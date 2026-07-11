@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { currentUser } from "@/data/users";
+import { currentUser } from "@/config/constants";
 import { getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 

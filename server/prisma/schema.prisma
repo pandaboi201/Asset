@@ -1,0 +1,223 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model ActivityLogEntry {
+  id          String  @id
+  actorName   String
+  actorAvatar String?
+  action      String
+  target      String
+  timestamp   String
+  type        String
+}
+
+model AppNotification {
+  id          String  @id
+  type        String
+  title       String
+  message     String
+  read        Boolean @default(false)
+  createdAt   String
+  actionLabel String?
+  actionHref  String?
+}
+
+model Asset {
+  id                  String  @id
+  assetTag            String  @unique
+  name                String
+  category            String
+  manufacturer        String
+  model               String
+  serialNumber        String
+  status              String
+  condition           String
+  assignedToId        String?
+  assignedToName      String?
+  assignedToAvatarUrl String?
+  location            String
+  department          String
+  purchaseDate        String
+  warrantyExpiry      String
+  supplier            String
+  notes               String?
+  createdAt           String
+  updatedAt           String
+}
+
+model CctvCamera {
+  id              String  @id
+  name            String
+  location        String
+  zone            String
+  ipAddress       String
+  model           String
+  resolution      String
+  status          String
+  recording       Boolean
+  storageUsedGb   Float
+  storageTotalGb  Float
+  lastPing        String
+  installedDate   String
+  firmwareVersion String
+  nvrId           String?
+}
+
+model DeviceIssue {
+  id             String  @id
+  reference      String  @unique
+  assetTag       String
+  assetName      String
+  issuedToId     String
+  issuedToName   String
+  issuedToAvatar String?
+  issuedToDept   String
+  issuedBy       String
+  issueDate      String
+  dueDate        String
+  returnDate     String?
+  status         String
+  condition      String
+  notes          String?
+}
+
+model DeviceUpgrade {
+  id              String  @id
+  assetId         String
+  assetTag        String
+  assetName       String
+  type            String
+  title           String
+  description     String
+  fromSpec        String?
+  toSpec          String?
+  performedById   String?
+  performedByName String
+  performedAt     String
+}
+
+model InventoryItem {
+  id            String @id
+  sku           String @unique
+  name          String
+  category      String
+  quantity      Int
+  reorderLevel  Int
+  location      String
+  warehouse     String
+  supplier      String
+  status        String
+  lastRestocked String
+  updatedAt     String
+}
+
+model MaintenanceTask {
+  id               String  @id
+  reference        String  @unique
+  assetTag         String
+  assetName        String
+  title            String
+  type             String
+  status           String
+  priority         String
+  assignedToId     String
+  assignedToName   String
+  assignedToAvatar String?
+  scheduledDate    String
+  completedDate    String?
+  vendor           String?
+  description      String
+}
+
+model Nvr {
+  id                     String @id
+  name                   String
+  manufacturer           String
+  model                  String
+  location               String
+  ipAddress              String
+  status                 String
+  channelsTotal          Int
+  channelsUsed           Int
+  storageUsedTb          Float
+  storageTotalTb         Float
+  recordingRetentionDays Int
+  firmwareVersion        String
+  installedDate          String
+  connectedCameraIds     String
+}
+
+model PartInstallation {
+  id                 String  @id
+  partId             String
+  partNumber         String
+  partName           String
+  assetId            String
+  assetTag           String
+  assetName          String
+  quantity           Int
+  installedById      String?
+  installedByName    String
+  installedAt        String
+  repairTicketNumber String?
+}
+
+model RepairTicket {
+  id                 String  @id
+  ticketNumber       String  @unique
+  assetTag           String
+  assetName          String
+  issueSummary       String
+  reportedById       String
+  reportedByName     String
+  reportedByAvatar   String?
+  assignedTechId     String?
+  assignedTechName   String?
+  assignedTechAvatar String?
+  status             String
+  priority           String
+  reportedAt         String
+  resolvedAt         String?
+  vendor             String?
+  slaHours           Int
+}
+
+model SparePart {
+  id             String @id
+  partNumber     String @unique
+  name           String
+  category       String
+  compatibleWith String
+  quantity       Int
+  reorderLevel   Int
+  supplier       String
+  location       String
+  status         String
+  updatedAt      String
+}
+
+model User {
+  id           String  @id
+  name         String
+  email        String  @unique
+  avatarUrl    String?
+  role         String
+  department   String
+  jobTitle     String
+  phone        String?
+  location     String
+  status       String
+  lastActiveAt String
+  createdAt    String
+}
+
+model SystemSetting {
+  key   String @id
+  value String
+}

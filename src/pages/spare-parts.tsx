@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAsync } from "@/hooks/use-async";
 import { partInstallationService, sparePartService } from "@/services";
-import { SPARE_PART_CATEGORY_OPTIONS } from "@/data/spare-parts";
+import { SPARE_PART_CATEGORY_OPTIONS } from "@/config/constants";
 import { formatDate } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 

@@ -31,7 +31,7 @@ import { inventoryService } from "@/services";
 import {
   INVENTORY_CATEGORY_OPTIONS,
   INVENTORY_WAREHOUSE_OPTIONS,
-} from "@/data/inventory";
+} from "@/config/constants";
 import { formatDate } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 import { InventoryFormDialog } from "@/components/forms/inventory-form-dialog";

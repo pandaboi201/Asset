@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { useAsync } from "@/hooks/use-async";
 import { assetService, partInstallationService, sparePartService } from "@/services";
-import { currentUser } from "@/data/users";
+import { currentUser } from "@/config/constants";
 import { toast } from "@/components/ui/sonner";
 
 interface InstallPartDialogProps {

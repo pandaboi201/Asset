@@ -15,7 +15,7 @@ import { assetService } from "@/services";
 import {
   ASSET_CATEGORY_OPTIONS,
   ASSET_STATUS_OPTIONS,
-} from "@/data/assets";
+} from "@/config/constants";
 import { toast } from "@/components/ui/sonner";
 import { createAssetColumns } from "./asset-columns";
 import { AssetFormDialog, type AssetFormValues } from "./asset-form-dialog";
@@ -89,7 +89,6 @@ export function AssetsPage() {
       await assetService.create({
         ...values,
         id: `ast-${Date.now()}`,
-        assignedTo: null,
         purchaseDate: now,
         warrantyExpiry: now,
         createdAt: now,

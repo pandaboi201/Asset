@@ -37,7 +37,7 @@ import {
   assetsByDepartment,
   assetsByStatus,
   maintenanceByStatus,
-} from "@/data/analytics";
+} from "@/config/constants";
 import { toast } from "@/components/ui/sonner";
 
 const AXIS = { fontSize: 12, fill: "hsl(var(--muted-foreground))" };

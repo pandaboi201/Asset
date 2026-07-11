@@ -59,7 +59,10 @@ export function IssueFormDialog({
   });
 
   useEffect(() => {
-    if (open) reset();
+    if (open) {
+      reset();
+      assetsQ.refetch();
+    }
   }, [open, reset]);
 
   const submit = handleSubmit(async (values) => {

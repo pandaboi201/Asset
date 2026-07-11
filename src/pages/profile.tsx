@@ -19,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useAsync } from "@/hooks/use-async";
 import { notificationService } from "@/services";
-import { currentUser } from "@/data/users";
+import { currentUser } from "@/config/constants";
 import { formatDate, getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 

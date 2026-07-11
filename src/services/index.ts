@@ -14,87 +14,37 @@ import type {
   User,
 } from "@/types";
 
-import { assets } from "@/data/assets";
-import { inventory } from "@/data/inventory";
-import { deviceIssues } from "@/data/issues";
-import { maintenanceTasks } from "@/data/maintenance";
-import { repairTickets } from "@/data/repairs";
-import { spareParts } from "@/data/spare-parts";
-import { cctvCameras } from "@/data/cctv";
-import { nvrs } from "@/data/nvr";
-import { deviceUpgrades } from "@/data/upgrades";
-import { partInstallations } from "@/data/part-installations";
-import { users } from "@/data/users";
-import { activityLog, notifications } from "@/data/notifications";
-import {
-  assetTrend,
-  assetsByCategory,
-  assetsByDepartment,
-  assetsByStatus,
-  kpiMetrics,
-  maintenanceByStatus,
-} from "@/data/analytics";
-
 import { createCollectionService, delay } from "./http";
 
 /**
- * Central service registry. Every UI page imports from here and never touches
- * the mock arrays directly, so wiring a real API means editing only this file.
+ * Central service registry. Every UI page imports from here.
+ * Now connected to the real REST API.
  */
 
-export const assetService = createCollectionService<Asset>(assets, {
-  searchable: ["assetTag", "name", "serialNumber", "manufacturer", "model", "assignedTo.name"],
-});
+export const assetService = createCollectionService<Asset>("assets");
 
-export const inventoryService = createCollectionService<InventoryItem>(
-  inventory,
-  { searchable: ["sku", "name", "category", "warehouse", "supplier"] },
-);
+export const inventoryService = createCollectionService<InventoryItem>("inventory");
 
-export const issueService = createCollectionService<DeviceIssue>(deviceIssues, {
-  searchable: ["reference", "assetTag", "assetName", "issuedTo.name"],
-});
+export const issueService = createCollectionService<DeviceIssue>("issues");
 
-export const maintenanceService = createCollectionService<MaintenanceTask>(
-  maintenanceTasks,
-  { searchable: ["reference", "assetTag", "assetName", "title", "assignedTo.name"] },
-);
+export const maintenanceService = createCollectionService<MaintenanceTask>("maintenance");
 
-export const repairService = createCollectionService<RepairTicket>(
-  repairTickets,
-  { searchable: ["ticketNumber", "assetTag", "assetName", "issueSummary", "reportedBy.name"] },
-);
+export const repairService = createCollectionService<RepairTicket>("repairs");
 
-export const sparePartService = createCollectionService<SparePart>(spareParts, {
-  searchable: ["partNumber", "name", "category", "supplier"],
-});
+export const sparePartService = createCollectionService<SparePart>("spare-parts");
 
-export const cctvService = createCollectionService<CctvCamera>(cctvCameras, {
-  searchable: ["name", "location", "zone", "ipAddress", "model"],
-});
+export const cctvService = createCollectionService<CctvCamera>("cctv");
 
-export const nvrService = createCollectionService<Nvr>(nvrs, {
-  searchable: ["name", "manufacturer", "model", "location", "ipAddress"],
-});
+export const nvrService = createCollectionService<Nvr>("nvr");
 
-export const upgradeService = createCollectionService<DeviceUpgrade>(
-  deviceUpgrades,
-  { searchable: ["assetTag", "assetName", "title", "type"] },
-);
+export const upgradeService = createCollectionService<DeviceUpgrade>("upgrades");
 
-export const partInstallationService =
-  createCollectionService<PartInstallation>(partInstallations, {
-    searchable: ["partNumber", "partName", "assetTag", "assetName"],
-  });
+export const partInstallationService = createCollectionService<PartInstallation>("part-installations");
 
-export const userService = createCollectionService<User>(users, {
-  searchable: ["name", "email", "department", "jobTitle", "location"],
-});
+export const userService = createCollectionService<User>("users");
 
 /* ------------------------------------------------------------------ */
 /* Relationship / aggregation queries                                  */
-/* These join across resources. A real API would expose them as        */
-/* dedicated endpoints (e.g. GET /assets/:tag/history).                */
 /* ------------------------------------------------------------------ */
 
 export interface AssetHistory {
@@ -128,8 +78,8 @@ export async function getAssetHistory(assetTag: string): Promise<AssetHistory> {
     timeline.push({
       id: `t-iss-${it.id}`,
       kind: "issue",
-      title: `Issued to ${it.issuedTo.name}`,
-      description: `${it.issuedTo.department} · due ${new Date(it.dueDate).toLocaleDateString()}`,
+      title: `Issued to ${it.issuedToName || "Unknown"}`,
+      description: `${it.issuedToDept || ""} · due ${new Date(it.dueDate).toLocaleDateString()}`,
       actor: it.issuedBy,
       status: it.status,
       reference: it.reference,
@@ -139,7 +89,7 @@ export async function getAssetHistory(assetTag: string): Promise<AssetHistory> {
       timeline.push({
         id: `t-ret-${it.id}`,
         kind: "return",
-        title: `Returned by ${it.issuedTo.name}`,
+        title: `Returned by ${it.issuedToName || "Unknown"}`,
         description: `Condition on return: ${it.condition}`,
         reference: it.reference,
         date: it.returnDate,
@@ -151,10 +101,10 @@ export async function getAssetHistory(assetTag: string): Promise<AssetHistory> {
       id: `t-rep-${r.id}`,
       kind: "repair",
       title: r.issueSummary,
-      description: r.assignedTechnician
-        ? `Technician: ${r.assignedTechnician.name}`
+      description: r.assignedTechName
+        ? `Technician: ${r.assignedTechName}`
         : "Awaiting assignment",
-      actor: r.reportedBy.name,
+      actor: r.reportedByName || "Unknown",
       status: r.status,
       reference: r.ticketNumber,
       date: r.reportedAt,
@@ -167,7 +117,7 @@ export async function getAssetHistory(assetTag: string): Promise<AssetHistory> {
       title: u.title,
       description:
         u.fromSpec && u.toSpec ? `${u.fromSpec} → ${u.toSpec}` : u.description,
-      actor: u.performedBy.name,
+      actor: u.performedByName || "Unknown",
       status: u.type,
       date: u.performedAt,
     });
@@ -178,7 +128,7 @@ export async function getAssetHistory(assetTag: string): Promise<AssetHistory> {
       kind: "maintenance",
       title: m.title,
       description: `${m.type} maintenance`,
-      actor: m.assignedTo.name,
+      actor: m.assignedToName || "Unknown",
       status: m.status,
       reference: m.reference,
       date: m.completedDate ?? m.scheduledDate,
@@ -192,7 +142,7 @@ export async function getAssetHistory(assetTag: string): Promise<AssetHistory> {
       description: p.repairTicketNumber
         ? `Part ${p.partNumber} · ${p.repairTicketNumber}`
         : `Part ${p.partNumber}`,
-      actor: p.installedBy.name,
+      actor: p.installedByName || "Unknown",
       date: p.installedAt,
     });
   }
@@ -205,7 +155,7 @@ export async function getAssetHistory(assetTag: string): Promise<AssetHistory> {
 /** Devices currently assigned to a given user. */
 export async function getUserDevices(userId: string): Promise<Asset[]> {
   const all = await assetService.all();
-  return all.filter((a) => a.assignedTo?.id === userId);
+  return all.filter((a) => a.assignedToId === userId);
 }
 
 /** Every installation of a given spare part (which devices it went into). */
@@ -221,22 +171,48 @@ export async function getPartInstallations(
 /** Cameras connected to a given NVR. */
 export async function getNvrCameras(nvr: Nvr): Promise<CctvCamera[]> {
   const all = await cctvService.all();
-  const set = new Set(nvr.connectedCameraIds);
+  let set = new Set<string>();
+  try {
+     const parsed = JSON.parse(nvr.connectedCameraIds);
+     if (Array.isArray(parsed)) set = new Set(parsed);
+  } catch (e) {
+     // Ignore parsing error
+  }
   return all.filter((c) => set.has(c.id));
 }
 
+const notifBase = createCollectionService<AppNotification>("notifications");
 export const notificationService = {
-  all: () => delay([...notifications]),
-  activity: () => delay([...activityLog]),
+  ...notifBase,
+  activity: () => fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/activity/all`).then(r => r.json())
 };
 
 export const dashboardService = {
-  kpis: () => delay(kpiMetrics),
-  assetTrend: () => delay(assetTrend),
-  assetsByCategory: () => delay(assetsByCategory),
-  assetsByStatus: () => delay(assetsByStatus),
-  assetsByDepartment: () => delay(assetsByDepartment),
-  maintenanceByStatus: () => delay(maintenanceByStatus),
+  // Since we haven't implemented full dashboard logic in backend yet, 
+  // we use standard fetch or fallback to static data if needed.
+  kpis: () => fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/dashboard`).then(r => r.json()).then(d => d.kpis || []),
+  assetTrend: () => fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/dashboard`).then(r => r.json()).then(d => d.assetTrend || []),
+  assetsByCategory: () => fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/dashboard`).then(r => r.json()).then(d => d.assetsByCategory || []),
+  assetsByStatus: () => fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/dashboard`).then(r => r.json()).then(d => d.assetsByStatus || []),
+  assetsByDepartment: () => fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/dashboard`).then(r => r.json()).then(d => d.assetsByDepartment || []),
+  maintenanceByStatus: () => fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/dashboard`).then(r => r.json()).then(d => d.maintenanceByStatus || []),
+};
+
+export const settingsService = {
+  getAll: async () => {
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/settings`);
+    if (!res.ok) return {};
+    return res.json();
+  },
+  updateAll: async (payload: Record<string, string[]>) => {
+    const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/settings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error("Failed to update settings");
+    return res.json();
+  }
 };
 
 export type { AppNotification };

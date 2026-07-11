@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import type { User, UserRole } from "@/types";
 import { userService } from "@/services";
-import { DEPARTMENT_OPTIONS, LOCATION_OPTIONS } from "@/data/users";
+import { DEPARTMENT_OPTIONS, LOCATION_OPTIONS } from "@/config/constants";
 import { toast } from "@/components/ui/sonner";
 import { Input } from "@/components/ui/input";
 import { FormDialogShell, FormField, FormSelect } from "@/components/shared/form";

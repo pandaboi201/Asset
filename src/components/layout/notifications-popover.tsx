@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { notifications as seedNotifications } from "@/data/notifications";
+import { notifications } from "@/config/constants";
 import type { AppNotification, NotificationType } from "@/types";
 import { formatRelativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -42,7 +42,7 @@ const TONE: Record<NotificationType, string> = {
 };
 
 export function NotificationsPopover() {
-  const [items, setItems] = useState<AppNotification[]>(seedNotifications);
+  const [items, setItems] = useState<AppNotification[]>(notifications);
   const unread = useMemo(() => items.filter((n) => !n.read).length, [items]);
 
   const markAllRead = () =>

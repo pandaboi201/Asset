@@ -28,7 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAsync } from "@/hooks/use-async";
 import { cctvService, nvrService } from "@/services";
-import { CCTV_ZONE_OPTIONS } from "@/data/cctv";
+import { CCTV_ZONE_OPTIONS } from "@/config/constants";
 import { formatDate, formatRelativeTime } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";

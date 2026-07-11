@@ -22,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAsync } from "@/hooks/use-async";
 import { notificationService } from "@/services";
-import { notifications as seed } from "@/data/notifications";
+import { notifications } from "@/config/constants";
 import { formatRelativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -93,7 +93,7 @@ function NotificationRow({
 }
 
 export function NotificationsPage() {
-  const [items, setItems] = useState<AppNotification[]>(seed);
+  const [items, setItems] = useState<AppNotification[]>(notifications);
   const activity = useAsync(() => notificationService.activity(), []);
 
   const unread = useMemo(() => items.filter((n) => !n.read), [items]);

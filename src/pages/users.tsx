@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAsync } from "@/hooks/use-async";
 import { assetService, userService } from "@/services";
-import { DEPARTMENT_OPTIONS } from "@/data/users";
+import { DEPARTMENT_OPTIONS } from "@/config/constants";
 import { formatDate, formatRelativeTime, getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";

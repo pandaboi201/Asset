@@ -8,7 +8,7 @@ import { inventoryService } from "@/services";
 import {
   INVENTORY_CATEGORY_OPTIONS,
   INVENTORY_WAREHOUSE_OPTIONS,
-} from "@/data/inventory";
+} from "@/config/constants";
 import { toast } from "@/components/ui/sonner";
 import { Input } from "@/components/ui/input";
 import { FormDialogShell, FormField, FormSelect } from "@/components/shared/form";

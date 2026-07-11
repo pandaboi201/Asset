@@ -1,131 +1,90 @@
 import type { PaginatedResult, QueryParams } from "@/types";
 
-/**
- * Simulated network latency so loading states are visible in the UI.
- * A real HTTP client would replace `delay` with fetch/axios calls.
- */
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+
 export function delay<T>(value: T, ms = 450): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), ms));
 }
 
-function getField<T>(item: T, path: string): unknown {
-  return path.split(".").reduce<unknown>((acc, key) => {
-    if (acc && typeof acc === "object") {
-      return (acc as Record<string, unknown>)[key];
-    }
-    return undefined;
-  }, item);
-}
-
-export interface CollectionServiceOptions<T> {
-  /** Fields scanned when a free-text `search` is provided. */
-  searchable: (keyof T | string)[];
-  /** How to derive an item's id. */
-  idKey?: keyof T;
-}
-
-/**
- * Build a fully-typed in-memory collection service that mimics a REST resource.
- * Swap the internal array operations for real API calls to go live.
- */
-export function createCollectionService<T extends Record<string, unknown>>(
-  seed: T[],
-  options: CollectionServiceOptions<T>,
-) {
-  const idKey = (options.idKey ?? "id") as keyof T;
-  // Clone so demo mutations don't corrupt the original seed on hot reload.
-  let store: T[] = seed.map((item) => ({ ...item }));
-
-  function applyQuery(params: QueryParams = {}): PaginatedResult<T> {
-    const {
-      search,
-      page = 1,
-      pageSize = 10,
-      sortBy,
-      sortDir = "asc",
-      filters = {},
-    } = params;
-
-    let rows = [...store];
-
-    // Free-text search.
-    if (search && search.trim()) {
-      const q = search.trim().toLowerCase();
-      rows = rows.filter((row) =>
-        options.searchable.some((field) => {
-          const value = getField(row, field as string);
-          return value != null && String(value).toLowerCase().includes(q);
-        }),
-      );
-    }
-
-    // Field filters (exact match, supports array of allowed values).
-    for (const [key, allowed] of Object.entries(filters)) {
+function toQueryString(params?: QueryParams): string {
+  if (!params) return "";
+  const query = new URLSearchParams();
+  if (params.search) query.set("search", params.search);
+  if (params.page) query.set("page", String(params.page));
+  if (params.pageSize) query.set("pageSize", String(params.pageSize));
+  if (params.sortBy) query.set("sortBy", params.sortBy);
+  if (params.sortDir) query.set("sortDir", params.sortDir);
+  
+  if (params.filters) {
+    for (const [key, allowed] of Object.entries(params.filters)) {
       if (allowed == null || (Array.isArray(allowed) && allowed.length === 0)) {
         continue;
       }
-      const allowedList = Array.isArray(allowed) ? allowed : [allowed];
-      rows = rows.filter((row) => {
-        const value = getField(row, key);
-        return allowedList.includes(String(value));
-      });
+      query.set(`filters[${key}]`, JSON.stringify(allowed));
     }
-
-    // Sorting.
-    if (sortBy) {
-      rows.sort((a, b) => {
-        const av = getField(a, sortBy);
-        const bv = getField(b, sortBy);
-        if (av == null) return 1;
-        if (bv == null) return -1;
-        if (typeof av === "number" && typeof bv === "number") {
-          return sortDir === "asc" ? av - bv : bv - av;
-        }
-        const cmp = String(av).localeCompare(String(bv));
-        return sortDir === "asc" ? cmp : -cmp;
-      });
-    }
-
-    const total = rows.length;
-    const start = (page - 1) * pageSize;
-    const data = rows.slice(start, start + pageSize);
-    return { data, total, page, pageSize };
   }
 
+  return `?${query.toString()}`;
+}
+
+/**
+ * Connected HTTP service for the real backend.
+ */
+export function createCollectionService<T extends Record<string, unknown>>(
+  endpoint: string
+) {
+  const baseUrl = `${API_BASE}/${endpoint}`;
+
   return {
-    /** List everything (no pagination) — handy for charts and selects. */
-    all(): Promise<T[]> {
-      return delay([...store]);
+    async all(): Promise<T[]> {
+      const res = await fetch(`${baseUrl}/all`);
+      if (!res.ok) throw new Error(`Failed to fetch ${endpoint}/all`);
+      return res.json();
     },
-    /** Paginated / filtered / sorted query. */
-    query(params?: QueryParams): Promise<PaginatedResult<T>> {
-      return delay(applyQuery(params));
+    async query(params?: QueryParams): Promise<PaginatedResult<T>> {
+      const res = await fetch(`${baseUrl}/query${toQueryString(params)}`);
+      if (!res.ok) throw new Error(`Failed to query ${endpoint}`);
+      return res.json();
     },
-    getById(id: string): Promise<T | undefined> {
-      return delay(store.find((item) => String(item[idKey]) === id));
+    async getById(id: string): Promise<T | undefined> {
+      const res = await fetch(`${baseUrl}/${id}`);
+      if (!res.ok) {
+        if (res.status === 404) return undefined;
+        throw new Error(`Failed to fetch ${endpoint}/${id}`);
+      }
+      return res.json();
     },
-    create(payload: T): Promise<T> {
-      store = [payload, ...store];
-      return delay(payload);
-    },
-    update(id: string, patch: Partial<T>): Promise<T | undefined> {
-      let updated: T | undefined;
-      store = store.map((item) => {
-        if (String(item[idKey]) === id) {
-          updated = { ...item, ...patch };
-          return updated;
-        }
-        return item;
+    async create(payload: T): Promise<T> {
+      const res = await fetch(`${baseUrl}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
       });
-      return delay(updated);
+      if (!res.ok) {
+        const text = await res.text();
+        console.error(`Error from server for ${endpoint}:`, text);
+        throw new Error(`Failed to create ${endpoint}`);
+      }
+      return res.json();
     },
-    remove(id: string): Promise<{ id: string }> {
-      store = store.filter((item) => String(item[idKey]) !== id);
-      return delay({ id });
+    async update(id: string, patch: Partial<T>): Promise<T | undefined> {
+      const res = await fetch(`${baseUrl}/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch)
+      });
+      if (!res.ok) throw new Error(`Failed to update ${endpoint}/${id}`);
+      return res.json();
     },
-    /** Reset back to the original seed (used by mock reset actions). */
+    async remove(id: string): Promise<{ id: string }> {
+      const res = await fetch(`${baseUrl}/${id}`, {
+        method: "DELETE"
+      });
+      if (!res.ok) throw new Error(`Failed to delete ${endpoint}/${id}`);
+      return res.json();
+    },
     reset(): void {
-      store = seed.map((item) => ({ ...item }));
-    },
+      console.warn("reset() is not supported in the live API");
+    }
   };
 }

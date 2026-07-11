@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import type { SparePart, SparePartStatus } from "@/types";
 import { sparePartService } from "@/services";
-import { SPARE_PART_CATEGORY_OPTIONS } from "@/data/spare-parts";
+import { SPARE_PART_CATEGORY_OPTIONS } from "@/config/constants";
 import { toast } from "@/components/ui/sonner";
 import { Input } from "@/components/ui/input";
 import { FormDialogShell, FormField, FormSelect } from "@/components/shared/form";

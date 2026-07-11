@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Monitor, Moon, Settings as SettingsIcon, Sun } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/page-header";
@@ -25,6 +25,14 @@ import {
 import { useTheme, type Theme } from "@/components/theme/theme-provider";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/sonner";
+import { Textarea } from "@/components/ui/textarea";
+import { useAsync } from "@/hooks/use-async";
+import { settingsService } from "@/services";
+import {
+  ASSET_CATEGORY_OPTIONS,
+  ASSET_LOCATION_OPTIONS,
+  ASSET_DEPARTMENT_OPTIONS,
+} from "@/config/constants";
 
 function SettingRow({
   title,
@@ -54,6 +62,51 @@ const THEME_OPTIONS: { value: Theme; label: string; icon: typeof Sun }[] = [
 
 export function SettingsPage() {
   const { theme, setTheme } = useTheme();
+  const { data: settingsData, refetch } = useAsync(() => settingsService.getAll(), []);
+  
+  const [lists, setLists] = useState({
+    category_options: "",
+    location_options: "",
+    department_options: "",
+    manufacturer_options: "",
+    model_options: "",
+  });
+
+  const [savingLists, setSavingLists] = useState(false);
+
+  // Initialize textareas from fetched settings or defaults
+  useEffect(() => {
+    if (settingsData) {
+      setLists({
+        category_options: (settingsData.category_options?.length ? settingsData.category_options : ASSET_CATEGORY_OPTIONS).join(", "),
+        location_options: (settingsData.location_options?.length ? settingsData.location_options : ASSET_LOCATION_OPTIONS).join(", "),
+        department_options: (settingsData.department_options?.length ? settingsData.department_options : ASSET_DEPARTMENT_OPTIONS).join(", "),
+        manufacturer_options: (settingsData.manufacturer_options || []).join(", "),
+        model_options: (settingsData.model_options || []).join(", "),
+      });
+    }
+  }, [settingsData]);
+
+  const handleSaveLists = async () => {
+    setSavingLists(true);
+    try {
+      const payload = {
+        category_options: lists.category_options.split(",").map(s => s.trim()).filter(Boolean),
+        location_options: lists.location_options.split(",").map(s => s.trim()).filter(Boolean),
+        department_options: lists.department_options.split(",").map(s => s.trim()).filter(Boolean),
+        manufacturer_options: lists.manufacturer_options.split(",").map(s => s.trim()).filter(Boolean),
+        model_options: lists.model_options.split(",").map(s => s.trim()).filter(Boolean),
+      };
+      await settingsService.updateAll(payload);
+      toast.success("Data lists saved successfully");
+      refetch();
+    } catch (e) {
+      toast.error("Failed to save lists");
+    } finally {
+      setSavingLists(false);
+    }
+  };
+
   const [notif, setNotif] = useState({
     email: true,
     push: true,
@@ -77,6 +130,7 @@ export function SettingsPage() {
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
+          <TabsTrigger value="lists">Data Lists</TabsTrigger>
         </TabsList>
 
         {/* General */}
@@ -261,6 +315,71 @@ export function SettingsPage() {
               <div className="flex justify-end">
                 <Button onClick={() => toast.success("Security settings updated")}>
                   Update security
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Data Lists */}
+        <TabsContent value="lists">
+          <Card>
+            <CardHeader>
+              <CardTitle>Data Lists (Selectables)</CardTitle>
+              <CardDescription>
+                Manage the options available in dropdown menus across the application. Separate each option with a comma.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-1.5">
+                <Label>Categories</Label>
+                <Textarea 
+                  value={lists.category_options} 
+                  onChange={(e) => setLists({ ...lists, category_options: e.target.value })}
+                  placeholder="Laptop, Desktop, Monitor..." 
+                  rows={2} 
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Locations</Label>
+                <Textarea 
+                  value={lists.location_options} 
+                  onChange={(e) => setLists({ ...lists, location_options: e.target.value })}
+                  placeholder="New York HQ, San Francisco, Remote..." 
+                  rows={2} 
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Departments</Label>
+                <Textarea 
+                  value={lists.department_options} 
+                  onChange={(e) => setLists({ ...lists, department_options: e.target.value })}
+                  placeholder="Engineering, Finance, IT Operations..." 
+                  rows={2} 
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Manufacturers</Label>
+                <Textarea 
+                  value={lists.manufacturer_options} 
+                  onChange={(e) => setLists({ ...lists, manufacturer_options: e.target.value })}
+                  placeholder="Apple, Dell, HP, Lenovo..." 
+                  rows={2} 
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Models</Label>
+                <Textarea 
+                  value={lists.model_options} 
+                  onChange={(e) => setLists({ ...lists, model_options: e.target.value })}
+                  placeholder="MacBook Pro 14, XPS 13, ThinkPad T14..." 
+                  rows={2} 
+                />
+              </div>
+              <Separator />
+              <div className="flex justify-end">
+                <Button onClick={handleSaveLists} disabled={savingLists}>
+                  {savingLists ? "Saving..." : "Save Data Lists"}
                 </Button>
               </div>
             </CardContent>

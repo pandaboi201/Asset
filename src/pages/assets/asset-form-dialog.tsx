@@ -4,6 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import type { Asset } from "@/types";
+import { useAsync } from "@/hooks/use-async";
+import { settingsService } from "@/services";
 import {
   Dialog,
   DialogContent,
@@ -29,7 +31,7 @@ import {
   ASSET_DEPARTMENT_OPTIONS,
   ASSET_LOCATION_OPTIONS,
   ASSET_STATUS_OPTIONS,
-} from "@/data/assets";
+} from "@/config/constants";
 
 const assetSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -111,26 +113,48 @@ export function AssetFormDialog({
     },
   });
 
+  const { data: settings } = useAsync(() => settingsService.getAll(), []);
+  const categoryOptions = settings?.category_options?.length ? settings?.category_options : ASSET_CATEGORY_OPTIONS;
+  const locationOptions = settings?.location_options?.length ? settings?.location_options : ASSET_LOCATION_OPTIONS;
+  const departmentOptions = settings?.department_options?.length ? settings?.department_options : ASSET_DEPARTMENT_OPTIONS;
+  const manufacturerOptions = settings?.manufacturer_options || [];
+  const modelOptions = settings?.model_options || [];
+
   useEffect(() => {
     if (open) {
-      reset(
-        asset
-          ? {
-              name: asset.name,
-              assetTag: asset.assetTag,
-              category: asset.category,
-              manufacturer: asset.manufacturer,
-              model: asset.model,
-              serialNumber: asset.serialNumber,
-              status: asset.status,
-              condition: asset.condition,
-              location: asset.location,
-              department: asset.department,
-              supplier: asset.supplier,
-              notes: asset.notes ?? "",
-            }
-          : undefined,
-      );
+      if (asset) {
+        reset({
+          name: asset.name,
+          assetTag: asset.assetTag,
+          category: asset.category,
+          manufacturer: asset.manufacturer,
+          model: asset.model,
+          serialNumber: asset.serialNumber,
+          status: asset.status,
+          condition: asset.condition,
+          location: asset.location,
+          department: asset.department,
+          supplier: asset.supplier,
+          notes: asset.notes ?? "",
+        });
+      } else {
+        // Generate new asset tag
+        const newTag = `AST-${Math.floor(Date.now() / 1000).toString().slice(-6)}`;
+        reset({
+          name: "",
+          assetTag: newTag,
+          category: "",
+          manufacturer: "",
+          model: "",
+          serialNumber: "",
+          status: "available",
+          condition: "new",
+          location: "",
+          department: "",
+          supplier: "",
+          notes: "",
+        });
+      }
     }
   }, [open, asset, reset]);
 
@@ -159,7 +183,7 @@ export function AssetFormDialog({
               </Field>
             </div>
             <Field label="Asset tag" required error={errors.assetTag?.message}>
-              <Input placeholder="LT-1234" {...register("assetTag")} />
+              <Input placeholder="LT-1234" {...register("assetTag")} readOnly className="bg-muted text-muted-foreground" />
             </Field>
             <Field label="Serial number" required error={errors.serialNumber?.message}>
               <Input placeholder="SN000000" {...register("serialNumber")} />
@@ -175,7 +199,7 @@ export function AssetFormDialog({
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {ASSET_CATEGORY_OPTIONS.map((c) => (
+                      {categoryOptions.map((c: string) => (
                         <SelectItem key={c} value={c}>
                           {c}
                         </SelectItem>
@@ -207,10 +231,44 @@ export function AssetFormDialog({
             </Field>
 
             <Field label="Manufacturer" required error={errors.manufacturer?.message}>
-              <Input placeholder="Apple" {...register("manufacturer")} />
+              <Controller
+                control={control}
+                name="manufacturer"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select manufacturer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {manufacturerOptions.map((m: string) => (
+                        <SelectItem key={m} value={m}>
+                          {m}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </Field>
             <Field label="Model" required error={errors.model?.message}>
-              <Input placeholder="A2779" {...register("model")} />
+              <Controller
+                control={control}
+                name="model"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select model" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {modelOptions.map((m: string) => (
+                        <SelectItem key={m} value={m}>
+                          {m}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </Field>
 
             <Field label="Condition" required error={errors.condition?.message}>
@@ -243,7 +301,7 @@ export function AssetFormDialog({
                       <SelectValue placeholder="Select location" />
                     </SelectTrigger>
                     <SelectContent>
-                      {ASSET_LOCATION_OPTIONS.map((l) => (
+                      {locationOptions.map((l: string) => (
                         <SelectItem key={l} value={l}>
                           {l}
                         </SelectItem>
@@ -263,7 +321,7 @@ export function AssetFormDialog({
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
-                      {ASSET_DEPARTMENT_OPTIONS.map((d) => (
+                      {departmentOptions.map((d: string) => (
                         <SelectItem key={d} value={d}>
                           {d}
                         </SelectItem>

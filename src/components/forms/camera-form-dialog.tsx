@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import type { CameraStatus, CctvCamera } from "@/types";
 import { cctvService } from "@/services";
-import { CCTV_ZONE_OPTIONS } from "@/data/cctv";
+import { CCTV_ZONE_OPTIONS } from "@/config/constants";
 import { toast } from "@/components/ui/sonner";
 import { Input } from "@/components/ui/input";
 import { FormDialogShell, FormField, FormSelect } from "@/components/shared/form";
