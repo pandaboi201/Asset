@@ -167,6 +167,59 @@ export function crudRouter(prisma: PrismaClient, modelName: string) {
     }
   });
 
+  router.post("/bulk", async (req, res) => {
+    try {
+      if (!Array.isArray(req.body)) {
+        return res.status(400).json({ error: "Expected an array of objects" });
+      }
+
+      const results = [];
+      const errors = [];
+
+      for (let i = 0; i < req.body.length; i++) {
+        try {
+          const mappedData = mapPayload(req.body[i]);
+          
+          if (!mappedData.id) {
+            mappedData.id = `bulk-${Date.now()}-${i}`;
+          }
+
+          if (modelName === "deviceIssue") {
+            const asset = await prisma.asset.findFirst({ where: { assetTag: mappedData.assetTag } });
+            if (!asset || (asset.status !== "available" && asset.status !== "in-use")) {
+              throw new Error(`Asset ${mappedData.assetTag} is already issued or unavailable.`);
+            }
+          }
+
+          const item = await delegate.create({ data: mappedData });
+
+          if (modelName === "deviceIssue") {
+            const asset = await prisma.asset.findFirst({ where: { assetTag: mappedData.assetTag } });
+            if (asset) {
+              await prisma.asset.update({
+                where: { id: asset.id },
+                data: {
+                  status: "issued",
+                  assignedToId: mappedData.issuedToId,
+                  assignedToName: mappedData.issuedToName,
+                  assignedToAvatarUrl: mappedData.issuedToAvatar || null,
+                }
+              });
+            }
+          }
+          results.push(unmapPayload(item));
+        } catch (err: any) {
+          errors.push({ index: i, item: req.body[i], error: err.message || err });
+        }
+      }
+
+      res.status(201).json({ success: results.length, failed: errors.length, errors, results });
+    } catch (error: any) {
+      console.error(`[POST /${modelName}/bulk] Error:`, error);
+      res.status(500).json({ error: "Internal Server Error", details: error });
+    }
+  });
+
   router.post("/", async (req, res) => {
     try {
       const mappedData = mapPayload(req.body);

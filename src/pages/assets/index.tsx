@@ -19,6 +19,7 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { createAssetColumns } from "./asset-columns";
 import { AssetFormDialog, type AssetFormValues } from "./asset-form-dialog";
+import { CsvUpload } from "@/components/shared/csv-upload";
 
 export function AssetsPage() {
   const navigate = useNavigate();
@@ -107,6 +108,28 @@ export function AssetsPage() {
     refetch();
   };
 
+  const handleBulkImport = async (parsedData: any[]) => {
+    const now = new Date().toISOString();
+    const mapped = parsedData.map((row) => ({
+      ...row,
+      id: `ast-${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: now,
+      updatedAt: now,
+    }));
+    
+    try {
+      const res = await assetService.bulkCreate(mapped as Partial<Asset>[]);
+      if (res.failed > 0) {
+        toast.warning(`Imported ${res.success}, but ${res.failed} failed.`);
+      } else {
+        toast.success(`Successfully imported ${res.success} assets!`);
+      }
+      refetch();
+    } catch (e: any) {
+      toast.error(e.message || "Bulk import failed");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -114,9 +137,12 @@ export function AssetsPage() {
         description="Track, assign and audit every hardware asset across your organization."
         icon={<Laptop className="h-5 w-5" />}
       >
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4" /> Add Asset
-        </Button>
+        <div className="flex items-center gap-2">
+          <CsvUpload onDataParsed={handleBulkImport} />
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4" /> Add Asset
+          </Button>
+        </div>
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
