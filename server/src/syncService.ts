@@ -5,33 +5,7 @@ import { XMLParser } from "fast-xml-parser";
 const prisma = new PrismaClient();
 const parser = new XMLParser();
 
-// Fallback demo data in case devices are unreachable (like a demo environment)
-const getDemoDeviceInfo = (ip: string) => {
-  return {
-    DeviceInfo: {
-      deviceName: `Camera at ${ip}`,
-      firmwareVersion: "V5.5.800 build 210628",
-      model: "DS-2CD2043G0-I",
-      serialNumber: "DS-2CD2043G0-I20210712AAWR123456789",
-      macAddress: "00:40:41:12:34:56"
-    }
-  };
-};
 
-const getDemoStorageInfo = () => {
-  return {
-    hddList: {
-      hdd: [
-        {
-          id: 1,
-          capacity: 2000000,
-          freeSpace: 500000,
-          status: "OK"
-        }
-      ]
-    }
-  };
-};
 
 /**
  * Fetch ISAPI endpoint with Digest Auth
@@ -54,10 +28,9 @@ async function fetchIsapi(ip: string, username?: string | null, password?: strin
     
     const xml = await response.text();
     return parser.parse(xml);
-  } catch (error) {
-    console.warn(`[Sync] Could not reach ${ip}, using fallback data.`);
-    if (endpoint.includes("Storage")) return getDemoStorageInfo();
-    return getDemoDeviceInfo(ip);
+  } catch (error: any) {
+    console.warn(`[Sync] ISAPI Request failed for ${ip}${endpoint}: ${error.message}`);
+    throw error;
   }
 }
 
@@ -124,6 +97,19 @@ export async function runDeviceSync() {
           const info = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/System/deviceInfo");
           const storage = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/ContentMgmt/Storage");
           
+          let channelsUsed = 0;
+          try {
+            const channelsInfo = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/System/Video/inputs/channels");
+            if (channelsInfo && channelsInfo.VideoInputChannelList && channelsInfo.VideoInputChannelList.VideoInputChannel) {
+              const channels = Array.isArray(channelsInfo.VideoInputChannelList.VideoInputChannel) 
+                ? channelsInfo.VideoInputChannelList.VideoInputChannel 
+                : [channelsInfo.VideoInputChannelList.VideoInputChannel];
+              channelsUsed = channels.length;
+            }
+          } catch (e) {
+            console.warn(`[Sync] Could not fetch channels for NVR ${nvr.name}`);
+          }
+          
           let updateData: any = { status: "online" };
           
           if (info && info.DeviceInfo) {
@@ -139,13 +125,22 @@ export async function runDeviceSync() {
             }
           }
           
+          if (channelsUsed > 0) {
+            updateData.channelsUsed = channelsUsed;
+          }
+          
           await prisma.nvr.update({
             where: { id: nvr.id },
             data: updateData
           });
-          console.log(`[Sync] Updated NVR: ${nvr.name} (Model: ${updateData.model || 'Unknown'}, Storage: ${updateData.storageUsedTb}TB / ${updateData.storageTotalTb}TB)`);
+          console.log(`[Sync] Updated NVR: ${nvr.name} (Model: ${updateData.model || 'Unknown'}, Storage: ${updateData.storageUsedTb}TB / ${updateData.storageTotalTb}TB, Channels: ${channelsUsed})`);
         } catch (e: any) {
           console.error(`[Sync] Failed to sync NVR ${nvr.name}:`, e.message);
+          // Mark NVR as offline if we can't reach it
+          await prisma.nvr.update({
+            where: { id: nvr.id },
+            data: { status: "offline" }
+          });
         }
       } else {
         console.log(`[Sync] Skipping NVR ${nvr.name} (Missing IP, username, or password)`);
