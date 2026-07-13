@@ -15,19 +15,18 @@ const STATUSES = ["online", "offline", "maintenance"];
 
 const schema = z.object({
   name: z.string().min(2, "Name is required"),
-  manufacturer: z.string().min(1, "Manufacturer is required"),
-  model: z.string().min(1, "Model is required"),
-  location: z.string().min(2, "Location is required"),
-  ipAddress: z
-    .string()
-    .regex(/^(\d{1,3}\.){3}\d{1,3}$/, "Enter a valid IPv4 address"),
-  status: z.string().min(1, "Select a status"),
-  channelsTotal: z.coerce.number().min(1, "Must be at least 1"),
-  storageTotalTb: z.coerce.number().min(1, "Must be at least 1"),
-  recordingRetentionDays: z.coerce.number().min(1, "Must be at least 1"),
-  firmwareVersion: z.string().min(1, "Firmware version is required"),
-  username: z.string().optional(),
-  password: z.string().optional(),
+  ipAddress: z.string().regex(/^(\d{1,3}\.){3}\d{1,3}$/, "Enter a valid IPv4 address"),
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+  
+  manufacturer: z.string().optional(),
+  model: z.string().optional(),
+  location: z.string().optional(),
+  status: z.string().optional(),
+  channelsTotal: z.coerce.number().optional(),
+  storageTotalTb: z.coerce.number().optional(),
+  recordingRetentionDays: z.coerce.number().optional(),
+  firmwareVersion: z.string().optional(),
 });
 
 type Values = z.infer<typeof schema>;
@@ -56,15 +55,17 @@ export function NvrFormDialog({
     resolver: zodResolver(schema),
     defaultValues: {
       name: "",
+      ipAddress: "",
+      username: "",
+      password: "",
       manufacturer: "",
       model: "",
-      location: "",
-      ipAddress: "",
+      location: "Unknown",
       status: "online",
       channelsTotal: 16,
       storageTotalTb: 8,
       recordingRetentionDays: 30,
-      firmwareVersion: "v1.0.0",
+      firmwareVersion: "",
     },
   });
 
@@ -88,17 +89,17 @@ export function NvrFormDialog({
       } else {
         reset({
           name: "",
+          ipAddress: "",
+          username: "",
+          password: "",
           manufacturer: "",
           model: "",
-          location: "",
-          ipAddress: "",
+          location: "Unknown",
           status: "online",
           channelsTotal: 16,
           storageTotalTb: 8,
           recordingRetentionDays: 30,
-          firmwareVersion: "v1.0.0",
-          username: "",
-          password: "",
+          firmwareVersion: "",
         });
       }
     }
@@ -148,15 +149,45 @@ export function NvrFormDialog({
         });
         toast.success(`Recorder ${values.name} updated`);
       } else {
+        toast.info("Fetching device details from API...");
+        
+        let apiData: any = {};
+        try {
+          const response = await fetch("/api/isapi/test", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              ipAddress: values.ipAddress, 
+              username: values.username, 
+              password: values.password 
+            })
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || "Failed to connect to NVR API");
+          }
+          apiData = data;
+        } catch (apiError: any) {
+          throw new Error("API Fetch failed: " + apiError.message + ". Please check credentials.");
+        }
+
         await nvrService.create({
           id: `nvr-${Date.now()}`,
           ...values,
+          manufacturer: apiData.manufacturer || values.manufacturer || "Unknown",
+          model: apiData.model || values.model || "Unknown",
+          location: values.location || "Unknown",
+          status: values.status || "online",
+          firmwareVersion: apiData.firmwareVersion || values.firmwareVersion || "Unknown",
+          channelsTotal: apiData.channelsTotal || values.channelsTotal || 16,
+          storageTotalTb: apiData.storageTotalTb || values.storageTotalTb || 0,
+          recordingRetentionDays: values.recordingRetentionDays || 30,
           channelsUsed: 0,
           storageUsedTb: 0,
           installedDate: now,
           connectedCameraIds: "[]",
         } as unknown as Nvr);
-        toast.success(`Recorder ${values.name} added`);
+        toast.success(`Recorder ${values.name} added successfully`);
       }
       onCreated?.();
       onOpenChange(false);
@@ -182,52 +213,64 @@ export function NvrFormDialog({
       <FormField label="IP address" required error={errors.ipAddress?.message}>
         <Input placeholder="10.20.1.100" {...register("ipAddress")} />
       </FormField>
-      <FormField label="Manufacturer" required error={errors.manufacturer?.message}>
-        <Input placeholder="Hikvision" {...register("manufacturer")} />
-      </FormField>
-      <FormField label="Model" required error={errors.model?.message}>
-        <Input placeholder="DS-7616NI-K2" {...register("model")} />
-      </FormField>
-      <FormField label="Location" required error={errors.location?.message}>
-        <Input placeholder="Server Room A" {...register("location")} />
-      </FormField>
-      <FormField label="Firmware" required error={errors.firmwareVersion?.message}>
-        <Input placeholder="v1.0.0" {...register("firmwareVersion")} />
-      </FormField>
-      
-      <FormField label="Total Channels" required error={errors.channelsTotal?.message}>
-        <Input type="number" {...register("channelsTotal")} />
-      </FormField>
-      <FormField label="Total Storage (TB)" required error={errors.storageTotalTb?.message}>
-        <Input type="number" step="0.1" {...register("storageTotalTb")} />
-      </FormField>
-      <FormField label="Retention (Days)" required error={errors.recordingRetentionDays?.message}>
-        <Input type="number" {...register("recordingRetentionDays")} />
-      </FormField>
-      
-      <FormField label="Status" required error={errors.status?.message}>
-        <FormSelect
-          control={control}
-          name="status"
-          placeholder="Select status"
-          capitalize
-          options={STATUSES.map((s) => ({ label: s, value: s }))}
-        />
-      </FormField>
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="Username" error={errors.username?.message}>
+        <FormField label="Username" required error={errors.username?.message}>
           <Input placeholder="admin" {...register("username")} />
         </FormField>
-        <FormField label="Password" error={errors.password?.message}>
+        <FormField label="Password" required error={errors.password?.message}>
           <Input type="password" placeholder="••••••••" {...register("password")} />
         </FormField>
       </div>
-      <div className="flex justify-end pt-2">
-        <Button type="button" variant="secondary" size="sm" onClick={handleTestConnection} disabled={isTesting}>
-          {isTesting ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-          Test Connection & Auto-Fill
-        </Button>
-      </div>
+
+      {!isEdit && (
+        <p className="text-sm text-muted-foreground pt-4 pb-2">
+          Other details (Manufacturer, Model, Storage, etc.) will be automatically fetched from the NVR API upon submission.
+        </p>
+      )}
+
+      {isEdit && (
+        <>
+          <div className="flex justify-end pt-2 pb-4">
+            <Button type="button" variant="secondary" size="sm" onClick={handleTestConnection} disabled={isTesting}>
+              {isTesting ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              Test Connection & Auto-Fill
+            </Button>
+          </div>
+          
+          <FormField label="Manufacturer" error={errors.manufacturer?.message}>
+            <Input placeholder="Hikvision" {...register("manufacturer")} />
+          </FormField>
+          <FormField label="Model" error={errors.model?.message}>
+            <Input placeholder="DS-7616NI-K2" {...register("model")} />
+          </FormField>
+          <FormField label="Location" error={errors.location?.message}>
+            <Input placeholder="Server Room A" {...register("location")} />
+          </FormField>
+          <FormField label="Firmware" error={errors.firmwareVersion?.message}>
+            <Input placeholder="v1.0.0" {...register("firmwareVersion")} />
+          </FormField>
+          
+          <FormField label="Total Channels" error={errors.channelsTotal?.message}>
+            <Input type="number" {...register("channelsTotal")} />
+          </FormField>
+          <FormField label="Total Storage (TB)" error={errors.storageTotalTb?.message}>
+            <Input type="number" step="0.1" {...register("storageTotalTb")} />
+          </FormField>
+          <FormField label="Retention (Days)" error={errors.recordingRetentionDays?.message}>
+            <Input type="number" {...register("recordingRetentionDays")} />
+          </FormField>
+          
+          <FormField label="Status" error={errors.status?.message}>
+            <FormSelect
+              control={control}
+              name="status"
+              placeholder="Select status"
+              capitalize
+              options={STATUSES.map((s) => ({ label: s, value: s }))}
+            />
+          </FormField>
+        </>
+      )}
     </FormDialogShell>
   );
 }
