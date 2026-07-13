@@ -61,6 +61,26 @@ async function fetchIsapi(ip: string, username?: string | null, password?: strin
   }
 }
 
+function calculateStorage(hddList: any) {
+  if (!hddList || !hddList.hdd) return null;
+  // fast-xml-parser might return a single object instead of an array if there's only 1 HDD
+  const hdds = Array.isArray(hddList.hdd) ? hddList.hdd : [hddList.hdd];
+  
+  let totalMb = 0;
+  let freeMb = 0;
+  
+  for (const hdd of hdds) {
+    totalMb += Number(hdd.capacity) || 0;
+    freeMb += Number(hdd.freeSpace) || 0;
+  }
+  
+  // Hikvision usually returns capacity in MB
+  const storageTotalTb = Number((totalMb / 1000000).toFixed(2));
+  const storageUsedTb = Number(((totalMb - freeMb) / 1000000).toFixed(2));
+  
+  return { storageTotalTb, storageUsedTb };
+}
+
 /**
  * Syncs all cameras and NVRs from the database
  */
@@ -85,33 +105,50 @@ export async function runDeviceSync() {
                 status: "online"
               }
             });
-            console.log(`[Sync] Updated camera: ${cam.name}`);
+            console.log(`[Sync] Updated camera: ${cam.name} (${info.DeviceInfo.model})`);
+          } else {
+            console.log(`[Sync] Camera ${cam.name} responded, but XML parsing failed.`);
           }
         } catch (e: any) {
           console.error(`[Sync] Failed to sync camera ${cam.name}:`, e.message);
         }
+      } else {
+        console.log(`[Sync] Skipping camera ${cam.name} (Missing IP, username, or password)`);
       }
     }
 
     for (const nvr of nvrs) {
       if (nvr.ipAddress && nvr.username && nvr.password) {
         try {
+          console.log(`[Sync] Fetching NVR info for ${nvr.name} at ${nvr.ipAddress}...`);
           const info = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/System/deviceInfo");
+          const storage = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/ContentMgmt/Storage");
+          
+          let updateData: any = { status: "online" };
           
           if (info && info.DeviceInfo) {
-            await prisma.nvr.update({
-              where: { id: nvr.id },
-              data: {
-                firmwareVersion: info.DeviceInfo.firmwareVersion || nvr.firmwareVersion,
-                model: info.DeviceInfo.model || nvr.model,
-                status: "online"
-              }
-            });
-            console.log(`[Sync] Updated NVR: ${nvr.name}`);
+            updateData.firmwareVersion = info.DeviceInfo.firmwareVersion || nvr.firmwareVersion;
+            updateData.model = info.DeviceInfo.model || nvr.model;
           }
+          
+          if (storage && storage.hddList) {
+            const parsedStorage = calculateStorage(storage.hddList);
+            if (parsedStorage) {
+              updateData.storageTotalTb = parsedStorage.storageTotalTb;
+              updateData.storageUsedTb = parsedStorage.storageUsedTb;
+            }
+          }
+          
+          await prisma.nvr.update({
+            where: { id: nvr.id },
+            data: updateData
+          });
+          console.log(`[Sync] Updated NVR: ${nvr.name} (Model: ${updateData.model || 'Unknown'}, Storage: ${updateData.storageUsedTb}TB / ${updateData.storageTotalTb}TB)`);
         } catch (e: any) {
           console.error(`[Sync] Failed to sync NVR ${nvr.name}:`, e.message);
         }
+      } else {
+        console.log(`[Sync] Skipping NVR ${nvr.name} (Missing IP, username, or password)`);
       }
     }
     
