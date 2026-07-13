@@ -308,7 +308,7 @@ export function CctvPage() {
               <Button variant="destructive" onClick={async () => {
                 if (confirm("Are you sure you want to delete this camera?")) {
                   try {
-                    await cctvService.delete(detail.id);
+                    await cctvService.remove(detail.id);
                     toast.success("Camera deleted successfully");
                     setOpen(false);
                     refetch();
@@ -584,7 +584,7 @@ function NvrPanel() {
               <Button variant="destructive" onClick={async () => {
                 if (confirm("Are you sure you want to delete this NVR?")) {
                   try {
-                    await nvrService.delete(detail.id);
+                    await nvrService.remove(detail.id);
                     toast.success("NVR deleted successfully");
                     setOpen(false);
                     refetch();
