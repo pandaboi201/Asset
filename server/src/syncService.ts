@@ -118,7 +118,18 @@ export async function runDeviceSync() {
               channelsUsed = channels.length;
             }
           } catch (e) {
-            console.warn(`[Sync] Could not fetch channels for NVR ${nvr.name}`);
+            console.warn(`[Sync] Could not fetch standard channels, trying InputProxy fallback...`);
+            try {
+              const proxyInfo = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/ContentMgmt/InputProxy/channels");
+              if (proxyInfo && proxyInfo.InputProxyChannelList && proxyInfo.InputProxyChannelList.InputProxyChannel) {
+                const channels = Array.isArray(proxyInfo.InputProxyChannelList.InputProxyChannel) 
+                  ? proxyInfo.InputProxyChannelList.InputProxyChannel 
+                  : [proxyInfo.InputProxyChannelList.InputProxyChannel];
+                channelsUsed = channels.length;
+              }
+            } catch (e2) {
+               console.warn(`[Sync] InputProxy channels also failed.`);
+            }
           }
           
           let updateData: any = { status: "online" };
@@ -128,11 +139,15 @@ export async function runDeviceSync() {
             updateData.model = info.DeviceInfo.model || nvr.model;
           }
           
-          if (storage && storage.hddList) {
-            const parsedStorage = calculateStorage(storage.hddList);
-            if (parsedStorage) {
-              updateData.storageTotalTb = parsedStorage.storageTotalTb;
-              updateData.storageUsedTb = parsedStorage.storageUsedTb;
+          if (storage) {
+            if (storage.hddList || storage.HddList) {
+              const parsedStorage = calculateStorage(storage.hddList || storage.HddList);
+              if (parsedStorage) {
+                updateData.storageTotalTb = parsedStorage.storageTotalTb;
+                updateData.storageUsedTb = parsedStorage.storageUsedTb;
+              }
+            } else {
+              console.log(`[Sync] Unexpected storage response format:`, JSON.stringify(storage).substring(0, 200));
             }
           }
           
