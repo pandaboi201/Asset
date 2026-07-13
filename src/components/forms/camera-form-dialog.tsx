@@ -23,6 +23,8 @@ const schema = z.object({
   model: z.string().min(1, "Model is required"),
   resolution: z.string().min(1, "Select a resolution"),
   status: z.string().min(1, "Select a status"),
+  username: z.string().optional(),
+  password: z.string().optional(),
 });
 
 type Values = z.infer<typeof schema>;
@@ -30,12 +32,15 @@ type Values = z.infer<typeof schema>;
 export function CameraFormDialog({
   open,
   onOpenChange,
+  camera,
   onCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  camera?: CctvCamera | null;
   onCreated?: () => void;
 }) {
+  const isEdit = Boolean(camera);
   const {
     register,
     handleSubmit,
@@ -56,42 +61,80 @@ export function CameraFormDialog({
   });
 
   useEffect(() => {
-    if (open) reset();
-  }, [open, reset]);
+    if (open) {
+      if (camera) {
+        reset({
+          name: camera.name,
+          location: camera.location,
+          zone: camera.zone,
+          ipAddress: camera.ipAddress,
+          model: camera.model,
+          resolution: camera.resolution,
+          status: camera.status,
+          username: camera.username || "",
+          password: camera.password || "",
+        });
+      } else {
+        reset({
+          name: "",
+          location: "",
+          zone: "",
+          ipAddress: "",
+          model: "",
+          resolution: "4MP",
+          status: "online",
+          username: "",
+          password: "",
+        });
+      }
+    }
+  }, [open, camera, reset]);
 
   const submit = handleSubmit(async (values) => {
     const now = new Date().toISOString();
-    await cctvService.create({
-      id: `cam-${Date.now()}`,
-      name: values.name,
-      location: values.location,
-      zone: values.zone,
-      ipAddress: values.ipAddress,
-      model: values.model,
-      resolution: values.resolution,
-      status: values.status as CameraStatus,
-      recording: values.status === "recording",
-      storageUsedGb: 0,
-      storageTotalGb: 2000,
-      lastPing: now,
-      installedDate: now,
-      firmwareVersion: "v1.0.0",
-      nvrId: null,
-    } as CctvCamera);
-    toast.success(`${values.name} added to the camera fleet`);
-    onCreated?.();
-    onOpenChange(false);
+    try {
+      if (isEdit && camera) {
+        await cctvService.update(camera.id, {
+          ...values,
+          recording: values.status === "recording",
+        });
+        toast.success(`${values.name} updated successfully`);
+      } else {
+        await cctvService.create({
+          id: `cam-${Date.now()}`,
+          name: values.name,
+          location: values.location,
+          zone: values.zone,
+          ipAddress: values.ipAddress,
+          model: values.model,
+          resolution: values.resolution,
+          status: values.status as CameraStatus,
+          recording: values.status === "recording",
+          storageUsedGb: 0,
+          storageTotalGb: 2000,
+          lastPing: now,
+          installedDate: now,
+          firmwareVersion: "v1.0.0",
+          nvrId: null,
+        } as CctvCamera);
+        toast.success(`${values.name} added to the camera fleet`);
+      }
+      onCreated?.();
+      onOpenChange(false);
+    } catch (e: any) {
+      toast.error(e.message || "An error occurred");
+    }
   });
 
   return (
     <FormDialogShell
       open={open}
       onOpenChange={onOpenChange}
-      title="Add Camera"
-      description="Register a new CCTV camera."
+      title={isEdit ? "Edit Camera" : "Add Camera"}
+      description={isEdit ? "Update camera configuration." : "Register a new CCTV camera."}
       formId="camera-form"
       onSubmit={submit}
-      submitLabel="Add camera"
+      submitLabel={isEdit ? "Save changes" : "Add camera"}
       submitting={isSubmitting}
     >
       <FormField label="Camera name" required error={errors.name?.message}>
@@ -131,6 +174,14 @@ export function CameraFormDialog({
           options={STATUSES.map((s) => ({ label: s, value: s }))}
         />
       </FormField>
+      <div className="grid grid-cols-2 gap-4">
+        <FormField label="Username" error={errors.username?.message}>
+          <Input placeholder="admin" {...register("username")} />
+        </FormField>
+        <FormField label="Password" error={errors.password?.message}>
+          <Input type="password" placeholder="••••••••" {...register("password")} />
+        </FormField>
+      </div>
     </FormDialogShell>
   );
 }

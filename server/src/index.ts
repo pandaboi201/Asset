@@ -5,6 +5,7 @@ import express from "express";
 import cors from "cors";
 import { PrismaClient } from "@prisma/client";
 import { crudRouter } from "./crudRouter";
+import { startSyncJob } from "./syncService";
 
 const prisma = new PrismaClient();
 const app = express();
@@ -94,4 +95,5 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 API Server running at http://localhost:${PORT}`);
+  startSyncJob();
 });

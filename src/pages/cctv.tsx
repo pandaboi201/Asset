@@ -33,6 +33,7 @@ import { formatDate, formatRelativeTime } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { CameraFormDialog } from "@/components/forms/camera-form-dialog";
+import { NvrFormDialog } from "@/components/forms/nvr-form-dialog";
 
 const STATUS_OPTIONS = [
   { label: "Online", value: "online" },
@@ -144,6 +145,7 @@ export function CctvPage() {
   const [detail, setDetail] = useState<CctvCamera | null>(null);
   const [open, setOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  const [editingCamera, setEditingCamera] = useState<CctvCamera | null>(null);
 
   const cameras = data ?? [];
 
@@ -187,7 +189,7 @@ export function CctvPage() {
         description="Monitor the camera fleet, recording status and storage health."
         icon={<Camera className="h-5 w-5" />}
       >
-        <Button onClick={() => setFormOpen(true)}>
+        <Button onClick={() => { setEditingCamera(null); setFormOpen(true); }}>
           <Plus className="h-4 w-4" /> Add Camera
         </Button>
       </PageHeader>
@@ -254,7 +256,12 @@ export function CctvPage() {
         </TabsContent>
       </Tabs>
 
-      <CameraFormDialog open={formOpen} onOpenChange={setFormOpen} onCreated={refetch} />
+      <CameraFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        camera={editingCamera}
+        onCreated={refetch}
+      />
 
       <DetailSheet
         open={open}
@@ -294,6 +301,9 @@ export function CctvPage() {
             <>
               <Button variant="outline" onClick={() => setOpen(false)}>
                 Close
+              </Button>
+              <Button variant="outline" onClick={() => { setEditingCamera(detail); setFormOpen(true); setOpen(false); }}>
+                Edit
               </Button>
               <Button onClick={() => toast.success(`Opening live feed for ${detail.name} (demo)`)}>
                 <Radio className="h-4 w-4" /> Live feed
@@ -394,10 +404,12 @@ function NvrTile({
 }
 
 function NvrPanel() {
-  const { data, loading } = useAsync(() => nvrService.all(), []);
+  const { data, loading, refetch } = useAsync(() => nvrService.all(), []);
   const camerasQ = useAsync(() => cctvService.all(), []);
   const [detail, setDetail] = useState<Nvr | null>(null);
   const [open, setOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingNvr, setEditingNvr] = useState<Nvr | null>(null);
 
   const nvrs = data ?? [];
 
@@ -429,6 +441,13 @@ function NvrPanel() {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">Network Video Recorders</h3>
+        <Button onClick={() => { setEditingNvr(null); setFormOpen(true); }}>
+          <Plus className="h-4 w-4" /> Add Recorder
+        </Button>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MiniStat label="Recorders" value={stats.total} icon={<Server className="h-5 w-5" />} loading={loading} />
         <MiniStat label="Online" value={stats.online} tone="success" icon={<Wifi className="h-5 w-5" />} loading={loading} />
@@ -534,12 +553,21 @@ function NvrPanel() {
               <Button variant="outline" onClick={() => setOpen(false)}>
                 Close
               </Button>
+              <Button variant="outline" onClick={() => { setEditingNvr(detail); setFormOpen(true); setOpen(false); }}>
+                Edit
+              </Button>
               <Button onClick={() => toast.success(`Opening ${detail.name} console (demo)`)}>
                 <Server className="h-4 w-4" /> Manage
               </Button>
             </>
           )
         }
+      />
+      <NvrFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        nvr={editingNvr}
+        onCreated={refetch}
       />
     </div>
   );

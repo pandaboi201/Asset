@@ -47,21 +47,6 @@ export function crudRouter(prisma: PrismaClient, modelName: string) {
       }
     }
 
-    // Special fix for Camera (frontend sends storageTotalGb, firmwareVersion, etc which are not in DB)
-    if (modelName === "cctvCamera") {
-      if (result.status === "recording") {
-        result.isRecording = true;
-      } else if (result.recording !== undefined) {
-        result.isRecording = result.recording;
-      }
-      delete result.recording;
-      delete result.storageUsedGb;
-      delete result.storageTotalGb;
-      delete result.installedDate;
-      delete result.firmwareVersion;
-      delete result.nvrId;
-      if (!result.macAddress) result.macAddress = "00:00:00:00:00:00";
-    }
 
     // Special fix for MaintenanceTask (frontend sends description which isn't in DB originally)
     if (modelName === "maintenanceTask") {
@@ -119,15 +104,6 @@ export function crudRouter(prisma: PrismaClient, modelName: string) {
       }
     }
 
-    if (modelName === "cctvCamera") {
-      result.recording = result.isRecording;
-      result.status = result.isRecording ? "recording" : result.status;
-      result.storageUsedGb = 0;
-      result.storageTotalGb = 2000;
-      result.installedDate = result.lastPing;
-      result.firmwareVersion = "v1.0.0";
-      result.nvrId = null;
-    }
 
     return result;
   }

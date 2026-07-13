@@ -205,7 +205,9 @@ export interface CctvCamera {
   lastPing: string;
   installedDate: string;
   firmwareVersion: string;
-  nvrId?: ID | null;
+  username?: string;
+  password?: string;
+  nvrId: string | null;
 }
 
 export type NvrStatus = "online" | "offline" | "degraded" | "maintenance";
@@ -226,7 +228,9 @@ export interface Nvr {
   recordingRetentionDays: number;
   firmwareVersion: string;
   installedDate: string;
-  connectedCameraIds: ID[];
+  username?: string;
+  password?: string;
+  connectedCameraIds: string[];
 }
 
 export type UpgradeType =

@@ -192,7 +192,7 @@ export function AssetsPage() {
               value={search}
               onChange={setSearch}
               placeholder="Search assets, tags, serials..."
-              className="w-full sm:w-72"
+              className="w-full sm:w-64"
             />
             <FilterSelect
               value={status}
