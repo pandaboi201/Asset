@@ -527,6 +527,7 @@ function NvrPanel() {
                   title: "Network",
                   rows: [
                     { label: "IP address", value: <span className="font-mono">{detail.ipAddress}</span> },
+                    { label: "MAC Address", value: <span className="font-mono">{detail.macAddress || "—"}</span> },
                     { label: "Serial No", value: detail.serialNumber || "—" },
                     { label: "Firmware", value: detail.firmwareVersion },
                     { label: "Installed", value: formatDate(detail.installedDate) },

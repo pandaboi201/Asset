@@ -69,6 +69,7 @@ model CctvCamera {
   username        String?
   password        String?
   nvrId           String?
+  macAddress      String?
 }
 
 model DeviceIssue {
@@ -143,6 +144,7 @@ model Nvr {
   manufacturer           String
   model                  String
   serialNumber           String?
+  macAddress             String?
   location               String
   ipAddress              String
   status                 String

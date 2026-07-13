@@ -93,6 +93,8 @@ export async function runDeviceSync() {
               data: {
                 firmwareVersion: info.DeviceInfo.firmwareVersion || cam.firmwareVersion,
                 model: info.DeviceInfo.model || cam.model,
+                serialNumber: info.DeviceInfo.serialNumber || cam.serialNumber,
+                macAddress: info.DeviceInfo.macAddress || cam.macAddress,
                 lastPing: new Date().toISOString(),
                 status: "online"
               }
@@ -183,6 +185,8 @@ export async function runDeviceSync() {
           if (info && info.DeviceInfo) {
             updateData.firmwareVersion = info.DeviceInfo.firmwareVersion || nvr.firmwareVersion;
             updateData.model = info.DeviceInfo.model || nvr.model;
+            updateData.serialNumber = info.DeviceInfo.serialNumber || nvr.serialNumber;
+            updateData.macAddress = info.DeviceInfo.macAddress || nvr.macAddress;
           }
           
           if (storage) {

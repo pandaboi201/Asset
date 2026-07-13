@@ -173,6 +173,8 @@ app.post("/api/isapi/test", async (req, res) => {
     res.json({
       model: info?.DeviceInfo?.model || "",
       manufacturer: info?.DeviceInfo?.manufacturer || "Hikvision",
+      serialNumber: info?.DeviceInfo?.serialNumber || "",
+      macAddress: info?.DeviceInfo?.macAddress || "",
       firmwareVersion: info?.DeviceInfo?.firmwareVersion || "",
       storageTotalTb,
       storageUsedTb,

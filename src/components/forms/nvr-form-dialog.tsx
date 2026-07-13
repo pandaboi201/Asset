@@ -21,6 +21,8 @@ const schema = z.object({
   
   manufacturer: z.string().optional(),
   model: z.string().optional(),
+  serialNumber: z.string().optional(),
+  macAddress: z.string().optional(),
   location: z.string().optional(),
   status: z.string().optional(),
   channelsTotal: z.coerce.number().optional(),
@@ -60,6 +62,8 @@ export function NvrFormDialog({
       password: "",
       manufacturer: "",
       model: "",
+      serialNumber: "",
+      macAddress: "",
       location: "Unknown",
       status: "online",
       channelsTotal: 16,
@@ -76,6 +80,8 @@ export function NvrFormDialog({
           name: nvr.name,
           manufacturer: nvr.manufacturer,
           model: nvr.model,
+          serialNumber: nvr.serialNumber || "",
+          macAddress: nvr.macAddress || "",
           location: nvr.location,
           ipAddress: nvr.ipAddress,
           status: nvr.status,
@@ -94,6 +100,8 @@ export function NvrFormDialog({
           password: "",
           manufacturer: "",
           model: "",
+          serialNumber: "",
+          macAddress: "",
           location: "Unknown",
           status: "online",
           channelsTotal: 16,
@@ -126,6 +134,8 @@ export function NvrFormDialog({
       if (!response.ok) throw new Error(data.error || "Failed to test connection");
       
       if (data.model) setValue("model", data.model);
+      if (data.serialNumber) setValue("serialNumber", data.serialNumber);
+      if (data.macAddress) setValue("macAddress", data.macAddress);
       if (data.manufacturer) setValue("manufacturer", data.manufacturer);
       if (data.firmwareVersion) setValue("firmwareVersion", data.firmwareVersion);
       if (data.channelsTotal) setValue("channelsTotal", data.channelsTotal);
@@ -176,6 +186,8 @@ export function NvrFormDialog({
           ...values,
           manufacturer: apiData.manufacturer || values.manufacturer || "Unknown",
           model: apiData.model || values.model || "Unknown",
+          serialNumber: apiData.serialNumber || values.serialNumber || "",
+          macAddress: apiData.macAddress || values.macAddress || "",
           location: values.location || "Unknown",
           status: values.status || "online",
           firmwareVersion: apiData.firmwareVersion || values.firmwareVersion || "Unknown",
@@ -242,6 +254,12 @@ export function NvrFormDialog({
           </FormField>
           <FormField label="Model" error={errors.model?.message}>
             <Input placeholder="DS-7616NI-K2" {...register("model")} />
+          </FormField>
+          <FormField label="Serial Number" error={errors.serialNumber?.message}>
+            <Input placeholder="ABC123456789" {...register("serialNumber")} />
+          </FormField>
+          <FormField label="MAC Address" error={errors.macAddress?.message}>
+            <Input placeholder="00:11:22:33:44:55" {...register("macAddress")} />
           </FormField>
           <FormField label="Location" error={errors.location?.message}>
             <Input placeholder="Server Room A" {...register("location")} />

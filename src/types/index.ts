@@ -208,6 +208,7 @@ export interface CctvCamera {
   username?: string;
   password?: string;
   nvrId: string | null;
+  macAddress?: string;
 }
 
 export type NvrStatus = "online" | "offline" | "degraded" | "maintenance";
@@ -221,6 +222,7 @@ export interface Nvr {
   manufacturer: string;
   model: string;
   serialNumber?: string;
+  macAddress?: string;
   location: string;
   ipAddress: string;
   status: NvrStatus;
