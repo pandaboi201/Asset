@@ -5,7 +5,7 @@ import express from "express";
 import cors from "cors";
 import { PrismaClient } from "@prisma/client";
 import { crudRouter } from "./crudRouter";
-import { startSyncJob } from "./syncService";
+import { startSyncJob, fetchIsapi, calculateStorage } from "./syncService";
 
 const prisma = new PrismaClient();
 const app = express();
@@ -83,6 +83,104 @@ app.post("/api/settings", async (req, res) => {
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/isapi/test", async (req, res) => {
+  try {
+    const { ipAddress, username, password } = req.body;
+    if (!ipAddress || !username || !password) {
+      return res.status(400).json({ error: "Missing ipAddress, username, or password" });
+    }
+
+    const info = await fetchIsapi(ipAddress, username, password, "/ISAPI/System/deviceInfo");
+    
+    let storageTotalTb = 0;
+    let storageUsedTb = 0;
+    try {
+      const storage = await fetchIsapi(ipAddress, username, password, "/ISAPI/ContentMgmt/Storage");
+      if (storage) {
+        const hddList = storage.hddList || storage.HddList || (storage.storage && storage.storage.hddList);
+        if (hddList) {
+          const parsedStorage = calculateStorage(hddList);
+          if (parsedStorage) {
+            storageTotalTb = parsedStorage.storageTotalTb;
+            storageUsedTb = parsedStorage.storageUsedTb;
+          }
+        }
+      }
+    } catch (e) {}
+
+    let channelsTotal = 0;
+    try {
+      let channelsInfo = await fetchIsapi(ipAddress, username, password, "/ISAPI/System/Video/inputs/channels");
+      let channels = [];
+      if (channelsInfo && channelsInfo.VideoInputChannelList && channelsInfo.VideoInputChannelList.VideoInputChannel) {
+        channels = Array.isArray(channelsInfo.VideoInputChannelList.VideoInputChannel) 
+          ? channelsInfo.VideoInputChannelList.VideoInputChannel 
+          : [channelsInfo.VideoInputChannelList.VideoInputChannel];
+      }
+      channelsTotal = channels.length;
+    } catch (e) {
+      try {
+        const proxyInfo = await fetchIsapi(ipAddress, username, password, "/ISAPI/ContentMgmt/InputProxy/channels");
+        if (proxyInfo && proxyInfo.InputProxyChannelList && proxyInfo.InputProxyChannelList.InputProxyChannel) {
+          const channels = Array.isArray(proxyInfo.InputProxyChannelList.InputProxyChannel) 
+            ? proxyInfo.InputProxyChannelList.InputProxyChannel 
+            : [proxyInfo.InputProxyChannelList.InputProxyChannel];
+          channelsTotal = channels.length;
+        }
+      } catch (e2) {}
+    }
+
+    let recordingRetentionDays = 0;
+    try {
+      const searchXml = `<?xml version="1.0" encoding="utf-8"?>
+<CMSearchDescription>
+<searchID>1</searchID>
+<trackList><trackID>101</trackID></trackList>
+<timeSpanList>
+<timeSpan>
+  <startTime>2000-01-01T00:00:00Z</startTime>
+  <endTime>2037-12-31T23:59:59Z</endTime>
+</timeSpan>
+</timeSpanList>
+<maxResults>1</maxResults>
+<searchResultPostion>0</searchResultPostion>
+<metadataList><metadataDescriptor>//recordType.meta.std-cgi.com</metadataDescriptor></metadataList>
+</CMSearchDescription>`;
+      
+      const searchInfo = await fetchIsapi(ipAddress, username, password, "/ISAPI/ContentMgmt/search", {
+        method: "POST",
+        body: searchXml
+      });
+      
+      let searchMatchItem = searchInfo?.CMSearchResult?.matchList?.searchMatchItem;
+      if (searchMatchItem) {
+        if (Array.isArray(searchMatchItem)) searchMatchItem = searchMatchItem[0];
+        const startTimeStr = searchMatchItem?.timeSpan?.startTime;
+        if (startTimeStr) {
+          const startTime = new Date(startTimeStr).getTime();
+          const now = Date.now();
+          const diffDays = Math.round((now - startTime) / (1000 * 60 * 60 * 24));
+          if (diffDays > 0) {
+            recordingRetentionDays = diffDays;
+          }
+        }
+      }
+    } catch (e) {}
+
+    res.json({
+      model: info?.DeviceInfo?.model || "",
+      manufacturer: info?.DeviceInfo?.manufacturer || "Hikvision",
+      firmwareVersion: info?.DeviceInfo?.firmwareVersion || "",
+      storageTotalTb,
+      storageUsedTb,
+      channelsTotal,
+      recordingRetentionDays
+    });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
   }
 });
 

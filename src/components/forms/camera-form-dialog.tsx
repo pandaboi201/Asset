@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,6 +9,8 @@ import { CCTV_ZONE_OPTIONS } from "@/config/constants";
 import { toast } from "@/components/ui/sonner";
 import { Input } from "@/components/ui/input";
 import { FormDialogShell, FormField, FormSelect } from "@/components/shared/form";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 
 const RESOLUTIONS = ["1080p", "4MP", "8MP", "12MP", "4K UHD"];
 const STATUSES = ["online", "recording", "offline", "maintenance"];
@@ -46,6 +48,8 @@ export function CameraFormDialog({
     handleSubmit,
     control,
     reset,
+    getValues,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<Values>({
     resolver: zodResolver(schema),
@@ -89,6 +93,36 @@ export function CameraFormDialog({
       }
     }
   }, [open, camera, reset]);
+
+  const [isTesting, setIsTesting] = useState(false);
+
+  const handleTestConnection = async () => {
+    const { ipAddress, username, password } = getValues();
+    if (!ipAddress || !username || !password) {
+      toast.error("Please fill in IP address, username, and password first.");
+      return;
+    }
+    
+    setIsTesting(true);
+    try {
+      const response = await fetch("/api/isapi/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ipAddress, username, password })
+      });
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to test connection");
+      
+      if (data.model) setValue("model", data.model);
+      
+      toast.success("Connection successful! Data auto-filled.");
+    } catch (e: any) {
+      toast.error("Connection failed: " + e.message);
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   const submit = handleSubmit(async (values) => {
     const now = new Date().toISOString();
@@ -181,6 +215,12 @@ export function CameraFormDialog({
         <FormField label="Password" error={errors.password?.message}>
           <Input type="password" placeholder="••••••••" {...register("password")} />
         </FormField>
+      </div>
+      <div className="flex justify-end pt-2">
+        <Button type="button" variant="secondary" size="sm" onClick={handleTestConnection} disabled={isTesting}>
+          {isTesting ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+          Test Connection & Auto-Fill
+        </Button>
       </div>
     </FormDialogShell>
   );

@@ -305,6 +305,20 @@ export function CctvPage() {
               <Button variant="outline" onClick={() => { setEditingCamera(detail); setFormOpen(true); setOpen(false); }}>
                 Edit
               </Button>
+              <Button variant="destructive" onClick={async () => {
+                if (confirm("Are you sure you want to delete this camera?")) {
+                  try {
+                    await cctvService.delete(detail.id);
+                    toast.success("Camera deleted successfully");
+                    setOpen(false);
+                    refetch();
+                  } catch (e: any) {
+                    toast.error("Failed to delete camera: " + e.message);
+                  }
+                }
+              }}>
+                Delete
+              </Button>
               <Button onClick={() => toast.success(`Opening live feed for ${detail.name} (demo)`)}>
                 <Radio className="h-4 w-4" /> Live feed
               </Button>
@@ -566,6 +580,20 @@ function NvrPanel() {
               </Button>
               <Button variant="outline" onClick={() => { setEditingNvr(detail); setFormOpen(true); setOpen(false); }}>
                 Edit
+              </Button>
+              <Button variant="destructive" onClick={async () => {
+                if (confirm("Are you sure you want to delete this NVR?")) {
+                  try {
+                    await nvrService.delete(detail.id);
+                    toast.success("NVR deleted successfully");
+                    setOpen(false);
+                    refetch();
+                  } catch (e: any) {
+                    toast.error("Failed to delete NVR: " + e.message);
+                  }
+                }
+              }}>
+                Delete
               </Button>
               <Button onClick={() => toast.success(`Opening ${detail.name} console (demo)`)}>
                 <Server className="h-4 w-4" /> Manage

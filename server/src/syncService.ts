@@ -10,7 +10,7 @@ const parser = new XMLParser();
 /**
  * Fetch ISAPI endpoint with Digest Auth
  */
-async function fetchIsapi(ip: string, username?: string | null, password?: string | null, endpoint: string = "/ISAPI/System/deviceInfo") {
+export async function fetchIsapi(ip: string, username?: string | null, password?: string | null, endpoint: string = "/ISAPI/System/deviceInfo", options?: { method?: string, body?: string }) {
   const url = `http://${ip}${endpoint}`;
   
   if (!username || !password) {
@@ -22,15 +22,23 @@ async function fetchIsapi(ip: string, username?: string | null, password?: strin
     
     // Attempt Basic Authentication first
     let response = await fetch(url, {
-      method: "GET",
-      headers: { "Authorization": basicAuthHeader }
+      method: options?.method || "GET",
+      headers: { 
+        "Authorization": basicAuthHeader,
+        ...(options?.body ? { "Content-Type": "application/xml" } : {})
+      },
+      body: options?.body
     });
     
     // If Basic Auth is unauthorized, fallback to Digest Auth
     if (response.status === 401) {
       const { default: DigestFetch } = await import("digest-fetch");
       const client = new DigestFetch(username, password);
-      response = await client.fetch(url, { method: "GET" });
+      response = await client.fetch(url, { 
+        method: options?.method || "GET",
+        headers: options?.body ? { "Content-Type": "application/xml" } : undefined,
+        body: options?.body
+      });
     }
     
     if (!response.ok) {
@@ -45,7 +53,7 @@ async function fetchIsapi(ip: string, username?: string | null, password?: strin
   }
 }
 
-function calculateStorage(hddList: any) {
+export function calculateStorage(hddList: any) {
   if (!hddList || !hddList.hdd) return null;
   // fast-xml-parser might return a single object instead of an array if there's only 1 HDD
   const hdds = Array.isArray(hddList.hdd) ? hddList.hdd : [hddList.hdd];
@@ -131,6 +139,44 @@ export async function runDeviceSync() {
                console.warn(`[Sync] InputProxy channels also failed.`);
             }
           }
+            let recordingRetentionDays = 0;
+          try {
+            const searchXml = `<?xml version="1.0" encoding="utf-8"?>
+<CMSearchDescription>
+  <searchID>1</searchID>
+  <trackList><trackID>101</trackID></trackList>
+  <timeSpanList>
+    <timeSpan>
+      <startTime>2000-01-01T00:00:00Z</startTime>
+      <endTime>2037-12-31T23:59:59Z</endTime>
+    </timeSpan>
+  </timeSpanList>
+  <maxResults>1</maxResults>
+  <searchResultPostion>0</searchResultPostion>
+  <metadataList><metadataDescriptor>//recordType.meta.std-cgi.com</metadataDescriptor></metadataList>
+</CMSearchDescription>`;
+            
+            const searchInfo = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/ContentMgmt/search", {
+              method: "POST",
+              body: searchXml
+            });
+            
+            let searchMatchItem = searchInfo?.CMSearchResult?.matchList?.searchMatchItem;
+            if (searchMatchItem) {
+              if (Array.isArray(searchMatchItem)) searchMatchItem = searchMatchItem[0];
+              const startTimeStr = searchMatchItem?.timeSpan?.startTime;
+              if (startTimeStr) {
+                const startTime = new Date(startTimeStr).getTime();
+                const now = Date.now();
+                const diffDays = Math.round((now - startTime) / (1000 * 60 * 60 * 24));
+                if (diffDays > 0) {
+                  recordingRetentionDays = diffDays;
+                }
+              }
+            }
+          } catch (e) {
+            console.warn(`[Sync] Could not fetch retention days for NVR ${nvr.name}`);
+          }
           
           let updateData: any = { status: "online" };
           
@@ -156,11 +202,15 @@ export async function runDeviceSync() {
             updateData.channelsUsed = channelsUsed;
           }
           
+          if (recordingRetentionDays > 0) {
+            updateData.recordingRetentionDays = recordingRetentionDays;
+          }
+          
           await prisma.nvr.update({
             where: { id: nvr.id },
             data: updateData
           });
-          console.log(`[Sync] Updated NVR: ${nvr.name} (Model: ${updateData.model || 'Unknown'}, Storage: ${updateData.storageUsedTb}TB / ${updateData.storageTotalTb}TB, Channels: ${channelsUsed})`);
+          console.log(`[Sync] Updated NVR: ${nvr.name} (Model: ${updateData.model || 'Unknown'}, Storage: ${updateData.storageUsedTb}TB / ${updateData.storageTotalTb}TB, Channels: ${channelsUsed}, Retention: ${recordingRetentionDays} days)`);
         } catch (e: any) {
           console.error(`[Sync] Failed to sync NVR ${nvr.name}:`, e.message);
           // Mark NVR as offline if we can't reach it
