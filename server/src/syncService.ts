@@ -140,8 +140,9 @@ export async function runDeviceSync() {
           }
           
           if (storage) {
-            if (storage.hddList || storage.HddList) {
-              const parsedStorage = calculateStorage(storage.hddList || storage.HddList);
+            const hddList = storage.hddList || storage.HddList || (storage.storage && storage.storage.hddList);
+            if (hddList) {
+              const parsedStorage = calculateStorage(hddList);
               if (parsedStorage) {
                 updateData.storageTotalTb = parsedStorage.storageTotalTb;
                 updateData.storageUsedTb = parsedStorage.storageUsedTb;
