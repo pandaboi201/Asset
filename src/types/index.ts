@@ -212,12 +212,15 @@ export interface CctvCamera {
 
 export type NvrStatus = "online" | "offline" | "degraded" | "maintenance";
 
+export type NvrHddHealth = "healthy" | "warning" | "critical" | "unknown";
+
 /** Network Video Recorder that aggregates and records CCTV camera feeds. */
 export interface Nvr {
   id: ID;
   name: string;
   manufacturer: string;
   model: string;
+  serialNumber?: string;
   location: string;
   ipAddress: string;
   status: NvrStatus;
@@ -225,12 +228,16 @@ export interface Nvr {
   channelsUsed: number;
   storageUsedTb: number;
   storageTotalTb: number;
+  hddHealth?: NvrHddHealth;
+  smartTestStatus?: "passed" | "failed" | "running" | "unknown";
   recordingRetentionDays: number;
   firmwareVersion: string;
   installedDate: string;
   username?: string;
   password?: string;
   connectedCameraIds: string[];
+  alerts?: string[];
+  supportedEvents?: string[];
 }
 
 export type UpgradeType =

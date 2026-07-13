@@ -410,6 +410,11 @@ function NvrTile({
           <span className="flex items-center gap-1">
             <MapPin className="h-3 w-3" /> {nvr.location}
           </span>
+          {nvr.hddHealth && (
+            <span className={`capitalize ${nvr.hddHealth === 'critical' ? 'text-destructive font-medium' : nvr.hddHealth === 'warning' ? 'text-warning font-medium' : 'text-success'}`}>
+              HDD: {nvr.hddHealth}
+            </span>
+          )}
           <span className="font-mono">{nvr.ipAddress}</span>
         </div>
       </Card>
@@ -522,6 +527,7 @@ function NvrPanel() {
                   title: "Network",
                   rows: [
                     { label: "IP address", value: <span className="font-mono">{detail.ipAddress}</span> },
+                    { label: "Serial No", value: detail.serialNumber || "—" },
                     { label: "Firmware", value: detail.firmwareVersion },
                     { label: "Installed", value: formatDate(detail.installedDate) },
                   ],
@@ -537,10 +543,21 @@ function NvrPanel() {
                       label: "Storage",
                       value: `${detail.storageUsedTb} / ${detail.storageTotalTb} TB`,
                     },
+                    { label: "HDD Health", value: <span className="capitalize">{detail.hddHealth || "Unknown"}</span> },
+                    { label: "SMART Test", value: <span className="capitalize">{detail.smartTestStatus || "—"}</span> },
                     { label: "Retention", value: `${detail.recordingRetentionDays} days` },
                     { label: "Location", value: detail.location },
                   ],
                 },
+                ...(detail.supportedEvents || detail.alerts ? [
+                  {
+                    title: "Monitoring",
+                    rows: [
+                      ...(detail.alerts && detail.alerts.length > 0 ? [{ label: "Active Alerts", value: <span className="text-destructive font-medium">{detail.alerts.join(", ")}</span> }] : []),
+                      ...(detail.supportedEvents && detail.supportedEvents.length > 0 ? [{ label: "Supported Events", value: detail.supportedEvents.join(", ") }] : []),
+                    ],
+                  }
+                ] : []),
                 {
                   title: `Connected cameras (${connectedCameras.length})`,
                   rows: connectedCameras.length
