@@ -18,9 +18,20 @@ async function fetchIsapi(ip: string, username?: string | null, password?: strin
   }
 
   try {
-    const { default: DigestFetch } = await import("digest-fetch");
-    const client = new DigestFetch(username, password, { basic: true });
-    const response = await client.fetch(url, { method: "GET" });
+    const basicAuthHeader = "Basic " + Buffer.from(`${username}:${password}`).toString("base64");
+    
+    // Attempt Basic Authentication first
+    let response = await fetch(url, {
+      method: "GET",
+      headers: { "Authorization": basicAuthHeader }
+    });
+    
+    // If Basic Auth is unauthorized, fallback to Digest Auth
+    if (response.status === 401) {
+      const { default: DigestFetch } = await import("digest-fetch");
+      const client = new DigestFetch(username, password);
+      response = await client.fetch(url, { method: "GET" });
+    }
     
     if (!response.ok) {
       throw new Error(`HTTP Error: ${response.status}`);
