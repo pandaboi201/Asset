@@ -70,6 +70,7 @@ model CctvCamera {
   password        String?
   nvrId           String?
   macAddress      String?
+  serialNumber    String?
 }
 
 model DeviceIssue {
