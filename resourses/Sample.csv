@@ -1,0 +1,8 @@
+assetTag,name,category,manufacturer,model,serialNumber,status,condition,location,department,purchaseDate,warrantyExpiry,supplier,notes
+AST-1001,HP ProBook 450 G7,Laptops,HP,ProBook 450 G7,5CD0206XMR,in-use,Good,Head Office,General,2020-08-01T00:00:00.000Z,2023-08-01T00:00:00.000Z,Unknown,
+AST-1002,HP ProBook 450 G7,Laptops,HP,ProBook 450 G7,5CD0493H7N,in-use,Good,Head Office,General,2021-02-15T00:00:00.000Z,2024-02-15T00:00:00.000Z,Unknown,
+AST-1003,HP 450 G7 Probook,Laptops,HP,450 G7 Probook,CND8224LNB,in-use,Good,Head Office,General,2026-08-01T00:00:00.000Z,2029-08-01T00:00:00.000Z,Unknown,
+AST-1004,Hp ProBook 440 G10,Laptops,HP,ProBook 440 G10,5CD42298S2,in-use,Good,Head Office,General,2025-06-20T00:00:00.000Z,2028-06-20T00:00:00.000Z,Unknown,
+AST-1005,HP ProBook 450 G 7,Laptops,HP,ProBook 450 G 7,5CD1072RMW,in-use,Good,Head Office,General,2026-02-21T00:00:00.000Z,2029-02-21T00:00:00.000Z,Unknown,
+,,,,,,,,,,,,,
+,,,,,,,,,,,,,

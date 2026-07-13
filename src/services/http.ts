@@ -67,6 +67,19 @@ export function createCollectionService<T extends Record<string, unknown>>(
       }
       return res.json();
     },
+    async bulkCreate(payloads: Partial<T>[]): Promise<{ success: number; failed: number; errors: any[]; results: T[] }> {
+      const res = await fetch(`${baseUrl}/bulk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payloads)
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        console.error(`Error from server for ${endpoint}/bulk:`, text);
+        throw new Error(`Failed to bulk create ${endpoint}`);
+      }
+      return res.json();
+    },
     async update(id: string, patch: Partial<T>): Promise<T | undefined> {
       const res = await fetch(`${baseUrl}/${id}`, {
         method: "PATCH",
