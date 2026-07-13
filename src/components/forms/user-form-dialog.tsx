@@ -17,7 +17,6 @@ const schema = z.object({
   email: z.string().email("Enter a valid email"),
   role: z.string().min(1, "Select a role"),
   department: z.string().min(1, "Select a department"),
-  jobTitle: z.string().min(2, "Job title is required"),
   location: z.string().min(1, "Select a location"),
   phone: z.string().optional(),
 });
@@ -46,7 +45,6 @@ export function UserFormDialog({
       email: "",
       role: "viewer",
       department: "",
-      jobTitle: "",
       location: "",
       phone: "",
     },
@@ -65,14 +63,14 @@ export function UserFormDialog({
       avatarUrl: undefined,
       role: values.role as UserRole,
       department: values.department,
-      jobTitle: values.jobTitle,
+      jobTitle: "-",
       phone: values.phone?.trim() || undefined,
       location: values.location,
-      status: "invited",
+      status: "active",
       lastActiveAt: now,
       createdAt: now,
     } as User);
-    toast.success(`Invitation sent to ${values.name}`);
+    toast.success(`User added: ${values.name}`);
     onCreated?.();
     onOpenChange(false);
   });
@@ -81,11 +79,11 @@ export function UserFormDialog({
     <FormDialogShell
       open={open}
       onOpenChange={onOpenChange}
-      title="Invite User"
-      description="Add a team member and send them an invitation."
+      title="Add User"
+      description="Add a team member to the system."
       formId="user-form"
       onSubmit={submit}
-      submitLabel="Send invite"
+      submitLabel="Add user"
       submitting={isSubmitting}
     >
       <FormField label="Full name" required error={errors.name?.message}>
@@ -110,9 +108,6 @@ export function UserFormDialog({
           placeholder="Select department"
           options={DEPARTMENT_OPTIONS.map((d) => ({ label: d, value: d }))}
         />
-      </FormField>
-      <FormField label="Job title" required error={errors.jobTitle?.message}>
-        <Input placeholder="IT Technician" {...register("jobTitle")} />
       </FormField>
       <FormField label="Location" required error={errors.location?.message}>
         <FormSelect

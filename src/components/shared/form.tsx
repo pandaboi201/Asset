@@ -23,6 +23,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Labelled form control with optional error text. */
@@ -93,6 +96,71 @@ export function FormSelect<T extends FieldValues>({
             ))}
           </SelectContent>
         </Select>
+      )}
+    />
+  );
+}
+
+/** React Hook Form-bound Combobox (searchable select). */
+export function FormCombobox<T extends FieldValues>({
+  control,
+  name,
+  placeholder,
+  options,
+}: {
+  control: Control<T>;
+  name: Path<T>;
+  placeholder?: string;
+  options: SelectOption[];
+}) {
+  return (
+    <Controller
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              className={cn("w-full justify-between font-normal", !field.value && "text-muted-foreground")}
+            >
+              {field.value
+                ? options.find((option) => option.value === field.value)?.label
+                : placeholder || "Select..."}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+            <Command>
+              <CommandInput placeholder="Search..." />
+              <CommandList>
+                <CommandEmpty>No results found.</CommandEmpty>
+                <CommandGroup>
+                  {options.map((option) => (
+                    <CommandItem
+                      value={option.label}
+                      key={option.value}
+                      onSelect={() => {
+                        field.onChange(option.value);
+                        // Hack to close popover because Popover is uncontrolled here by default,
+                        // but it should auto-close. If not, it's fine.
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          option.value === field.value ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {option.label}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
       )}
     />
   );

@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { Copy, Eye, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Copy, Eye, MoreHorizontal, Pencil, Trash2, ArrowRightCircle } from "lucide-react";
 
 import type { Asset } from "@/types";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -22,12 +22,14 @@ interface ColumnHandlers {
   onView: (asset: Asset) => void;
   onEdit: (asset: Asset) => void;
   onDelete: (asset: Asset) => void;
+  onIssue: (asset: Asset) => void;
 }
 
 export function createAssetColumns({
   onView,
   onEdit,
   onDelete,
+  onIssue,
 }: ColumnHandlers): ColumnDef<Asset>[] {
   return [
     {
@@ -186,6 +188,11 @@ export function createAssetColumns({
                 <DropdownMenuItem onClick={() => onEdit(asset)}>
                   <Pencil /> Edit asset
                 </DropdownMenuItem>
+                {asset.status === "available" && (
+                  <DropdownMenuItem onClick={() => onIssue(asset)}>
+                    <ArrowRightCircle /> Quick issue
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={() => {
                     navigator.clipboard?.writeText(asset.assetTag);

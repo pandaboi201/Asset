@@ -227,7 +227,7 @@ export function UsersPage() {
         icon={<UsersIcon className="h-5 w-5" />}
       >
         <Button onClick={() => setFormOpen(true)}>
-          <UserPlus className="h-4 w-4" /> Invite User
+          <UserPlus className="h-4 w-4" /> Add User
         </Button>
       </PageHeader>
 

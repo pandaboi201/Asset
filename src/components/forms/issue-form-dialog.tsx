@@ -9,7 +9,7 @@ import { useAsync } from "@/hooks/use-async";
 import { toast } from "@/components/ui/sonner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { FormDialogShell, FormField, FormSelect } from "@/components/shared/form";
+import { FormCombobox, FormDialogShell, FormField, FormSelect } from "@/components/shared/form";
 
 const CONDITIONS = ["new", "good", "fair", "poor"];
 
@@ -26,10 +26,16 @@ type Values = z.infer<typeof schema>;
 export function IssueFormDialog({
   open,
   onOpenChange,
+  defaultAssetId,
+  defaultUserId,
+  defaultNotes,
   onCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultAssetId?: string;
+  defaultUserId?: string;
+  defaultNotes?: string;
   onCreated?: () => void;
 }) {
   const assetsQ = useAsync(() => assetService.all(), []);
@@ -39,7 +45,10 @@ export function IssueFormDialog({
     () =>
       (assetsQ.data ?? [])
         .filter((a) => a.status === "available" || a.status === "in-use")
-        .map((a) => ({ label: `${a.assetTag} · ${a.name}`, value: a.id })),
+        .map((a) => ({
+          label: `${a.name} (S/N: ${a.serialNumber || a.assetTag})`,
+          value: a.id,
+        })),
     [assetsQ.data],
   );
   const userOptions = useMemo(
@@ -60,10 +69,16 @@ export function IssueFormDialog({
 
   useEffect(() => {
     if (open) {
-      reset();
+      reset({
+        assetId: defaultAssetId || "",
+        userId: defaultUserId || "",
+        dueDate: "",
+        condition: "good",
+        notes: defaultNotes || "",
+      });
       assetsQ.refetch();
     }
-  }, [open, reset]);
+  }, [open, reset, defaultAssetId, defaultUserId, defaultNotes]);
 
   const submit = handleSubmit(async (values) => {
     const asset = (assetsQ.data ?? []).find((a) => a.id === values.assetId);
@@ -107,10 +122,10 @@ export function IssueFormDialog({
       submitting={isSubmitting}
     >
       <FormField label="Device" required full error={errors.assetId?.message}>
-        <FormSelect
+        <FormCombobox
           control={control}
           name="assetId"
-          placeholder="Select a device"
+          placeholder="Search and select a device..."
           options={assetOptions}
         />
       </FormField>

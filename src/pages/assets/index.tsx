@@ -19,6 +19,7 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { createAssetColumns } from "./asset-columns";
 import { AssetFormDialog, type AssetFormValues } from "./asset-form-dialog";
+import { IssueFormDialog } from "@/components/forms/issue-form-dialog";
 import { CsvUpload } from "@/components/shared/csv-upload";
 
 export function AssetsPage() {
@@ -31,6 +32,7 @@ export function AssetsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Asset | null>(null);
   const [toDelete, setToDelete] = useState<Asset | null>(null);
+  const [issueAsset, setIssueAsset] = useState<Asset | null>(null);
 
   const assets = data ?? [];
 
@@ -77,6 +79,7 @@ export function AssetsPage() {
         onView: openView,
         onEdit: openEdit,
         onDelete: (a) => setToDelete(a),
+        onIssue: (a) => setIssueAsset(a),
       }),
     [],
   );
@@ -226,6 +229,12 @@ export function AssetsPage() {
         confirmLabel="Delete"
         destructive
         onConfirm={handleDelete}
+      />
+      <IssueFormDialog
+        open={Boolean(issueAsset)}
+        onOpenChange={(o) => !o && setIssueAsset(null)}
+        defaultAssetId={issueAsset?.id}
+        onCreated={refetch}
       />
     </div>
   );

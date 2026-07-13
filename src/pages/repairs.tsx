@@ -31,6 +31,8 @@ import { repairService } from "@/services";
 import { formatRelativeTime, getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 import { RepairFormDialog } from "@/components/forms/repair-form-dialog";
+import { IssueFormDialog } from "@/components/forms/issue-form-dialog";
+import { Laptop } from "lucide-react";
 
 const STATUS_OPTIONS = [
   { label: "Reported", value: "reported" },
@@ -55,6 +57,7 @@ export function RepairsPage() {
   const [detail, setDetail] = useState<RepairTicket | null>(null);
   const [open, setOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  const [backupTicket, setBackupTicket] = useState<RepairTicket | null>(null);
 
   const tickets = data ?? [];
 
@@ -181,6 +184,9 @@ export function RepairsPage() {
                 >
                   View details
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setBackupTicket(row.original)}>
+                  <Laptop className="h-4 w-4" /> Issue Backup
+                </DropdownMenuItem>
                 {row.original.status !== "repaired" &&
                   row.original.status !== "unrepairable" && (
                     <DropdownMenuItem onClick={() => resolve(row.original)}>
@@ -242,6 +248,13 @@ export function RepairsPage() {
       />
 
       <RepairFormDialog open={formOpen} onOpenChange={setFormOpen} onCreated={refetch} />
+      
+      <IssueFormDialog
+        open={Boolean(backupTicket)}
+        onOpenChange={(o) => !o && setBackupTicket(null)}
+        defaultUserId={backupTicket?.reportedBy?.id}
+        defaultNotes={`Temporary backup for repaired device (Ticket #${backupTicket?.ticketNumber})`}
+      />
 
       <DetailSheet
         open={open}

@@ -214,18 +214,25 @@ export function AssetFormDialog({
                 control={control}
                 name="status"
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className="capitalize">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ASSET_STATUS_OPTIONS.map((s) => (
-                        <SelectItem key={s} value={s} className="capitalize">
-                          {s.replace("-", " ")}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-1.5">
+                    <Select value={field.value} onValueChange={field.onChange} disabled={asset?.status === "in-use"}>
+                      <SelectTrigger className="capitalize">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ASSET_STATUS_OPTIONS.map((s) => (
+                          <SelectItem key={s} value={s} className="capitalize">
+                            {s.replace("-", " ")}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {asset?.status === "in-use" && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Status locked. Use the Issue/Return page to return it first.
+                      </p>
+                    )}
+                  </div>
                 )}
               />
             </Field>
