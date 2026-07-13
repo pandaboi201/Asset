@@ -433,11 +433,22 @@ function NvrPanel() {
     [nvrs],
   );
 
-  const connectedCameras = detail
-    ? detail.connectedCameraIds
-        .map((id) => cameraMap.get(id))
-        .filter((c): c is CctvCamera => Boolean(c))
-    : [];
+  let parsedIds: string[] = [];
+  if (detail) {
+    if (Array.isArray(detail.connectedCameraIds)) {
+      parsedIds = detail.connectedCameraIds;
+    } else if (typeof detail.connectedCameraIds === "string") {
+      try {
+        parsedIds = JSON.parse(detail.connectedCameraIds);
+      } catch (e) {
+        parsedIds = [];
+      }
+    }
+  }
+
+  const connectedCameras = parsedIds
+    .map((id) => cameraMap.get(id))
+    .filter((c): c is CctvCamera => Boolean(c));
 
   return (
     <div className="space-y-6">
