@@ -443,6 +443,8 @@ function NvrPanel() {
   const camerasQ = useAsync(() => cctvService.all(), []);
   const [detail, setDetail] = useState<Nvr | null>(null);
   const [open, setOpen] = useState(false);
+  const [nvrFormOpen, setNvrFormOpen] = useState(false);
+  const [nvrMoveOpen, setNvrMoveOpen] = useState(false);
   const [editingNvr, setEditingNvr] = useState<Nvr | null>(null);
   const [installStatus, setInstallStatus] = useState("installed");
 
@@ -506,7 +508,7 @@ function NvrPanel() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">Network Video Recorders</h3>
-        <Button onClick={() => { setEditingNvr(null); setFormOpen(true); }}>
+        <Button onClick={() => { setEditingNvr(null); setNvrFormOpen(true); }}>
           <Plus className="h-4 w-4" /> Add Recorder
         </Button>
       </div>
