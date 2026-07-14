@@ -311,9 +311,7 @@ export function NvrFormDialog({
           <FormField label="Serial Number" error={errors.serialNumber?.message}>
             <Input placeholder="ABC123456789" {...register("serialNumber")} />
           </FormField>
-          <FormField label="Location" error={errors.location?.message}>
-            <Input placeholder="Server Room A" {...register("location")} />
-          </FormField>
+
           <FormField label="Firmware" error={errors.firmwareVersion?.message}>
             <Input placeholder="v1.0.0" {...register("firmwareVersion")} />
           </FormField>
