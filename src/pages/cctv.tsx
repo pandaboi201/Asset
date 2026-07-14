@@ -81,7 +81,6 @@ function CameraTile({
               <span>{camera.resolution}</span>
             </div>
             <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span className="truncate pr-2">MAC: <span className="font-mono">{camera.macAddress || "—"}</span></span>
               <span className="truncate">SN: {camera.serialNumber || "—"}</span>
             </div>
             <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
@@ -239,7 +238,6 @@ export function CctvPage() {
                   title: "Network",
                   rows: [
                     { label: "IP address", value: <span className="font-mono">{detail.ipAddress}</span> },
-                    { label: "MAC address", value: <span className="font-mono">{detail.macAddress || "—"}</span> },
                     { label: "Firmware", value: detail.firmwareVersion },
                     { label: "Last ping", value: formatRelativeTime(detail.lastPing) },
                   ],

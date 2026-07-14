@@ -107,8 +107,7 @@ export async function runDeviceSync() {
               data: {
                 firmwareVersion: info.DeviceInfo.firmwareVersion || cam.firmwareVersion,
                 model: info.DeviceInfo.model || cam.model,
-                serialNumber: info.DeviceInfo.serialNumber || cam.serialNumber,
-                macAddress: info.DeviceInfo.macAddress || cam.macAddress,
+                serialNumber: info.DeviceInfo.serialNumber ? String(info.DeviceInfo.serialNumber) : cam.serialNumber,
                 lastPing: new Date().toISOString(),
                 status: "online"
               }
@@ -151,8 +150,8 @@ export async function runDeviceSync() {
               
               for (const channel of channels) {
                 const ip = channel.sourceInputPortDescriptor?.ipAddress;
-                const mac = channel.sourceInputPortDescriptor?.macAddress;
-                const serial = channel.sourceInputPortDescriptor?.serialNumber || channel.serialNumber || channel.sourceInputPortDescriptor?.SN;
+                const serialRaw = channel.sourceInputPortDescriptor?.serialNumber || channel.serialNumber || channel.sourceInputPortDescriptor?.SN;
+                const serial = serialRaw ? String(serialRaw) : null;
                 const camModel = channel.sourceInputPortDescriptor?.model;
                 const camFirmware = channel.sourceInputPortDescriptor?.firmwareVersion;
                 const name = channel.name || `Camera ${channel.id}`;
@@ -161,7 +160,6 @@ export async function runDeviceSync() {
                   const existing = await prisma.cctvCamera.findFirst({ where: { ipAddress: ip } });
                   
                   const updatePayload: any = { nvrId: nvr.id };
-                  if (typeof mac === "string") updatePayload.macAddress = mac;
                   if (typeof serial === "string") updatePayload.serialNumber = serial;
                   if (typeof camModel === "string") updatePayload.model = camModel;
                   if (typeof camFirmware === "string") updatePayload.firmwareVersion = camFirmware;
@@ -190,7 +188,6 @@ export async function runDeviceSync() {
                         installedDate: new Date().toISOString(),
                         firmwareVersion: typeof camFirmware === "string" ? camFirmware : "Unknown",
                         nvrId: nvr.id,
-                        macAddress: typeof mac === "string" ? mac : null,
                         serialNumber: typeof serial === "string" ? serial : null,
                       }
                     });
@@ -257,8 +254,7 @@ export async function runDeviceSync() {
           if (info && info.DeviceInfo) {
             updateData.firmwareVersion = info.DeviceInfo.firmwareVersion || nvr.firmwareVersion;
             updateData.model = info.DeviceInfo.model || nvr.model;
-            updateData.serialNumber = info.DeviceInfo.serialNumber || nvr.serialNumber;
-            updateData.macAddress = info.DeviceInfo.macAddress || nvr.macAddress;
+            updateData.serialNumber = info.DeviceInfo.serialNumber ? String(info.DeviceInfo.serialNumber) : nvr.serialNumber;
             
             const extractedChannels = extractChannelsTotalFromModel(updateData.model);
             if (extractedChannels) {
