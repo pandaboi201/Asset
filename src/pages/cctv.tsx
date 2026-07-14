@@ -294,17 +294,17 @@ export function CctvPage() {
         }
         footer={
           detail && (
-            <>
-              <Button variant="outline" onClick={() => setOpen(false)}>
+            <div className="flex w-full flex-wrap gap-2 sm:justify-end">
+              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setOpen(false)}>
                 Close
               </Button>
-              <Button variant="outline" onClick={() => { setMoveOpen(true); setOpen(false); }}>
-                Move / Change Status
+              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => { setMoveOpen(true); setOpen(false); }}>
+                Move
               </Button>
-              <Button variant="outline" onClick={() => { setEditingCamera(detail); setFormOpen(true); setOpen(false); }}>
+              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => { setEditingCamera(detail); setFormOpen(true); setOpen(false); }}>
                 Edit
               </Button>
-              <Button variant="destructive" onClick={async () => {
+              <Button variant="destructive" className="flex-1 sm:flex-none" onClick={async () => {
                 if (confirm("Are you sure you want to delete this camera?")) {
                   try {
                     await cctvService.remove(detail.id);
@@ -318,10 +318,10 @@ export function CctvPage() {
               }}>
                 Delete
               </Button>
-              <Button onClick={() => toast.success(`Opening live feed for ${detail.name} (demo)`)}>
-                <Radio className="h-4 w-4" /> Live feed
+              <Button className="w-full sm:w-auto" onClick={() => toast.success(`Opening live feed for ${detail.name} (demo)`)}>
+                <Radio className="h-4 w-4 mr-2" /> Live feed
               </Button>
-            </>
+            </div>
           )
         }
       />
@@ -654,17 +654,17 @@ function NvrPanel() {
         }
         footer={
           detail && (
-            <>
-              <Button variant="outline" onClick={() => setOpen(false)}>
+            <div className="flex w-full flex-wrap gap-2 sm:justify-end">
+              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setOpen(false)}>
                 Close
               </Button>
-              <Button variant="outline" onClick={() => { setEditingNvr(detail); setFormOpen(true); setOpen(false); }}>
+              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => { setMoveOpen(true); setOpen(false); }}>
+                Move
+              </Button>
+              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => { setEditingNvr(detail); setFormOpen(true); setOpen(false); }}>
                 Edit
               </Button>
-              <Button variant="outline" onClick={() => { setMoveOpen(true); }}>
-                Move / Change Status
-              </Button>
-              <Button variant="destructive" onClick={async () => {
+              <Button variant="destructive" className="flex-1 sm:flex-none" onClick={async () => {
                 if (confirm("Are you sure you want to delete this NVR?")) {
                   try {
                     await nvrService.remove(detail.id);
@@ -678,10 +678,10 @@ function NvrPanel() {
               }}>
                 Delete
               </Button>
-              <Button onClick={() => toast.success(`Opening ${detail.name} console (demo)`)}>
-                <Server className="h-4 w-4" /> Manage
+              <Button className="w-full sm:w-auto" onClick={() => toast.success(`Opening ${detail.name} console (demo)`)}>
+                <Server className="h-4 w-4 mr-2" /> Manage
               </Button>
-            </>
+            </div>
           )
         }
       />
