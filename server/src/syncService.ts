@@ -13,7 +13,7 @@ const parser = new XMLParser({
 /**
  * Fetch ISAPI endpoint with Digest Auth
  */
-export async function fetchIsapi(ip: string, username?: string | null, password?: string | null, endpoint: string = "/ISAPI/System/deviceInfo", options?: { method?: string, body?: string }) {
+export async function fetchIsapi(ip: string, username?: string | null, password?: string | null, endpoint: string = "/ISAPI/System/deviceInfo", options?: { method?: string, body?: string, signal?: AbortSignal }) {
   const url = `http://${ip}${endpoint}`;
   
   if (!username || !password) {
@@ -30,7 +30,8 @@ export async function fetchIsapi(ip: string, username?: string | null, password?
         "Authorization": basicAuthHeader,
         ...(options?.body ? { "Content-Type": "application/xml" } : {})
       },
-      body: options?.body
+      body: options?.body,
+      signal: options?.signal
     });
     
     // If Basic Auth is unauthorized, fallback to Digest Auth
@@ -40,7 +41,8 @@ export async function fetchIsapi(ip: string, username?: string | null, password?
       response = await client.fetch(url, { 
         method: options?.method || "GET",
         headers: options?.body ? { "Content-Type": "application/xml" } : undefined,
-        body: options?.body
+        body: options?.body,
+        signal: options?.signal
       });
     }
     
@@ -170,15 +172,34 @@ export async function runDeviceSync() {
                 const ip = ipRaw && typeof ipRaw === "string" ? ipRaw : null;
                 
                 const serialRaw = findDeep(channel, ["serialNumber", "SerialNumber", "SN", "sn", "@_serialNumber", "@_SerialNumber", "@_SN", "@_sn"]);
-                const serial = serialRaw ? String(serialRaw) : null;
+                let serial = serialRaw ? String(serialRaw) : null;
                 
                 const camModelRaw = findDeep(channel, ["model", "Model", "@_model", "@_Model"]);
-                const camModel = camModelRaw ? String(camModelRaw) : null;
+                let camModel = camModelRaw ? String(camModelRaw) : null;
                 
                 const camFirmwareRaw = findDeep(channel, ["firmwareVersion", "FirmwareVersion", "softwareVersion", "@_firmwareVersion", "@_FirmwareVersion", "@_softwareVersion"]);
-                const camFirmware = camFirmwareRaw ? String(camFirmwareRaw) : null;
+                let camFirmware = camFirmwareRaw ? String(camFirmwareRaw) : null;
                 
                 const name = channel.name || `Camera ${channel.id}`;
+                
+                if (!serial && ip) {
+                  try {
+                    console.log(`[Sync] SN not in proxy. Attempting direct fetch to camera ${ip}...`);
+                    const camInfo = await fetchIsapi(ip, nvr.username, nvr.password, "/ISAPI/System/deviceInfo", { signal: AbortSignal.timeout(3000) });
+                    if (camInfo?.DeviceInfo?.serialNumber) {
+                      serial = String(camInfo.DeviceInfo.serialNumber);
+                      console.log(`[Sync] Direct fetch success! Serial: ${serial}`);
+                    }
+                    if (camInfo?.DeviceInfo?.model && !camModel) {
+                      camModel = String(camInfo.DeviceInfo.model);
+                    }
+                    if (camInfo?.DeviceInfo?.firmwareVersion && !camFirmware) {
+                      camFirmware = String(camInfo.DeviceInfo.firmwareVersion);
+                    }
+                  } catch(e: any) {
+                    console.log(`[Sync] Direct fetch failed for ${ip}: ${e.message}`);
+                  }
+                }
                 
                 console.log(`[Sync] Camera Extracted -> IP: ${ip}, Name: ${name}, Serial: ${serial}`);
                 if (!serial) {
