@@ -46,6 +46,7 @@ function CameraTile({
   camera,
   onOpen,
   index,
+  nvrName,
 }: {
   camera: CctvCamera;
   onOpen: (c: CctvCamera) => void;
