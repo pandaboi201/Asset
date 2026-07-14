@@ -341,13 +341,7 @@ export function CctvPage() {
           )
         }
       />
-      
-      <CameraMoveDialog
-        open={moveOpen}
-        onOpenChange={setMoveOpen}
-        camera={detail}
-        onUpdated={refetch}
-      />
+
     </div>
   );
 }
