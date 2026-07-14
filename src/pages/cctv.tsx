@@ -467,15 +467,26 @@ function NvrPanel() {
   );
 
   let parsedIds: string[] = [];
+  let parsedAlerts: string[] = [];
+  let parsedEvents: string[] = [];
+  
   if (detail) {
     if (Array.isArray(detail.connectedCameraIds)) {
       parsedIds = detail.connectedCameraIds;
     } else if (typeof detail.connectedCameraIds === "string") {
-      try {
-        parsedIds = JSON.parse(detail.connectedCameraIds);
-      } catch (e) {
-        parsedIds = [];
-      }
+      try { parsedIds = JSON.parse(detail.connectedCameraIds); } catch (e) { parsedIds = []; }
+    }
+
+    if (Array.isArray(detail.alerts)) {
+      parsedAlerts = detail.alerts;
+    } else if (typeof detail.alerts === "string") {
+      try { parsedAlerts = JSON.parse(detail.alerts); } catch (e) { parsedAlerts = []; }
+    }
+
+    if (Array.isArray(detail.supportedEvents)) {
+      parsedEvents = detail.supportedEvents;
+    } else if (typeof detail.supportedEvents === "string") {
+      try { parsedEvents = JSON.parse(detail.supportedEvents); } catch (e) { parsedEvents = []; }
     }
   }
 
@@ -579,12 +590,12 @@ function NvrPanel() {
                     { label: "Location", value: detail.location },
                   ],
                 },
-                ...(detail.supportedEvents || detail.alerts ? [
+                ...(parsedAlerts.length > 0 || parsedEvents.length > 0 ? [
                   {
                     title: "Monitoring",
                     rows: [
-                      ...(detail.alerts && detail.alerts.length > 0 ? [{ label: "Active Alerts", value: <span className="text-destructive font-medium">{detail.alerts.join(", ")}</span> }] : []),
-                      ...(detail.supportedEvents && detail.supportedEvents.length > 0 ? [{ label: "Supported Events", value: detail.supportedEvents.join(", ") }] : []),
+                      ...(parsedAlerts.length > 0 ? [{ label: "Active Alerts", value: <span className="text-destructive font-medium">{parsedAlerts.join(", ")}</span> }] : []),
+                      ...(parsedEvents.length > 0 ? [{ label: "Supported Events", value: parsedEvents.join(", ") }] : []),
                     ],
                   }
                 ] : []),
