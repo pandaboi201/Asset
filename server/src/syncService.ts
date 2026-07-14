@@ -145,14 +145,23 @@ export async function runDeviceSync() {
                 const ip = channel.sourceInputPortDescriptor?.ipAddress;
                 const mac = channel.sourceInputPortDescriptor?.macAddress;
                 const serial = channel.sourceInputPortDescriptor?.serialNumber || channel.serialNumber || channel.sourceInputPortDescriptor?.SN;
+                const camModel = channel.sourceInputPortDescriptor?.model;
+                const camFirmware = channel.sourceInputPortDescriptor?.firmwareVersion;
                 const name = channel.name || `Camera ${channel.id}`;
 
                 if (ip && typeof ip === "string") {
                   const existing = await prisma.cctvCamera.findFirst({ where: { ipAddress: ip } });
+                  
+                  const updatePayload: any = { nvrId: nvr.id };
+                  if (typeof mac === "string") updatePayload.macAddress = mac;
+                  if (typeof serial === "string") updatePayload.serialNumber = serial;
+                  if (typeof camModel === "string") updatePayload.model = camModel;
+                  if (typeof camFirmware === "string") updatePayload.firmwareVersion = camFirmware;
+                  
                   if (existing) {
                     await prisma.cctvCamera.update({
                       where: { id: existing.id },
-                      data: { nvrId: nvr.id }
+                      data: updatePayload
                     });
                     discoveredCameraIds.push(existing.id);
                   } else {
@@ -163,7 +172,7 @@ export async function runDeviceSync() {
                         location: "Unknown",
                         zone: "Discovered by NVR",
                         ipAddress: ip,
-                        model: "Unknown",
+                        model: typeof camModel === "string" ? camModel : "Unknown",
                         resolution: "Unknown",
                         status: "online",
                         recording: true,
@@ -171,7 +180,7 @@ export async function runDeviceSync() {
                         storageTotalGb: 0,
                         lastPing: new Date().toISOString(),
                         installedDate: new Date().toISOString(),
-                        firmwareVersion: "Unknown",
+                        firmwareVersion: typeof camFirmware === "string" ? camFirmware : "Unknown",
                         nvrId: nvr.id,
                         macAddress: typeof mac === "string" ? mac : null,
                         serialNumber: typeof serial === "string" ? serial : null,
