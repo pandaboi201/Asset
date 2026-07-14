@@ -73,8 +73,8 @@ export function calculateStorage(hddList: any) {
   return { storageTotalTb, storageUsedTb };
 }
 
-export function extractChannelsTotalFromModel(model: string): number | null {
-  if (!model) return null;
+export function extractChannelsTotalFromModel(model: any): number | null {
+  if (!model || typeof model !== "string") return null;
   const match = model.match(/DS-\d{2}(\d{2})/i);
   if (match && match[1]) {
     const channels = parseInt(match[1], 10);
@@ -144,9 +144,10 @@ export async function runDeviceSync() {
               for (const channel of channels) {
                 const ip = channel.sourceInputPortDescriptor?.ipAddress;
                 const mac = channel.sourceInputPortDescriptor?.macAddress;
+                const serial = channel.sourceInputPortDescriptor?.serialNumber || channel.serialNumber || channel.sourceInputPortDescriptor?.SN;
                 const name = channel.name || `Camera ${channel.id}`;
 
-                if (ip) {
+                if (ip && typeof ip === "string") {
                   const existing = await prisma.cctvCamera.findFirst({ where: { ipAddress: ip } });
                   if (existing) {
                     await prisma.cctvCamera.update({
@@ -172,7 +173,8 @@ export async function runDeviceSync() {
                         installedDate: new Date().toISOString(),
                         firmwareVersion: "Unknown",
                         nvrId: nvr.id,
-                        macAddress: mac || null,
+                        macAddress: typeof mac === "string" ? mac : null,
+                        serialNumber: typeof serial === "string" ? serial : null,
                       }
                     });
                     discoveredCameraIds.push(newCam.id);

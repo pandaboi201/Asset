@@ -52,11 +52,7 @@ function CameraTile({
   onOpen: (c: CctvCamera) => void;
   index: number;
   nvrName?: string | null;
-}) {
   const offline = camera.status === "offline";
-  const storagePct = Math.round(
-    (camera.storageUsedGb / camera.storageTotalGb) * 100,
-  );
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -67,59 +63,36 @@ function CameraTile({
         onClick={() => onOpen(camera)}
         className="group cursor-pointer overflow-hidden transition-shadow hover:shadow-elevated"
       >
-        {/* Faux video preview */}
-        <div
-          className={cn(
-            "relative flex h-28 items-center justify-center overflow-hidden bg-gradient-to-br",
-            offline
-              ? "from-muted to-muted/60"
-              : "from-slate-800 to-slate-950",
-          )}
-        >
-          <div className="absolute inset-0 bg-grid-pattern bg-[length:20px_20px] opacity-20" />
-          {offline ? (
-            <div className="flex flex-col items-center gap-1 text-muted-foreground">
-              <WifiOff className="h-7 w-7" />
-              <span className="text-xs font-medium">No signal</span>
-            </div>
-          ) : (
-            <Camera className="h-9 w-9 text-white/30 transition-transform group-hover:scale-110" />
-          )}
-
-          <div className="absolute left-2.5 top-2.5">
-            <StatusBadge status={camera.status} />
-          </div>
-          {camera.recording && (
-            <div className="absolute right-2.5 top-2.5 flex items-center gap-1 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur">
-              <CircleDot className="h-3 w-3 animate-pulse text-destructive" /> REC
-            </div>
-          )}
-          <div className="absolute bottom-2.5 left-2.5 rounded bg-black/50 px-1.5 py-0.5 font-mono text-[10px] text-white backdrop-blur">
-            {camera.resolution}
-          </div>
-        </div>
-
-        <div className="space-y-3 p-4">
+        <div className="p-3 space-y-2.5">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="truncate font-semibold">{camera.name}</p>
-              <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+              <p className="font-semibold leading-tight text-sm">{camera.name}</p>
+              <p className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
                 <MapPin className="h-3 w-3" /> {camera.location}
               </p>
             </div>
-            <span className="font-mono text-[10px] text-muted-foreground">
-              {camera.ipAddress}
-            </span>
+            <StatusBadge status={camera.status} />
           </div>
 
-          <div className="space-y-1.5 pt-1 border-t">
+          <div className="space-y-1 pt-1.5 border-t">
             <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>MAC: {camera.macAddress || "—"}</span>
-              <span>Serial: {camera.serialNumber || "—"}</span>
+              <span className="font-mono">{camera.ipAddress}</span>
+              <span>{camera.resolution}</span>
             </div>
-            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-              <Server className="h-3 w-3" />
-              {nvrName ? `Connected to: ${nvrName}` : "Standalone / Direct"}
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+              <span className="truncate pr-2">MAC: <span className="font-mono">{camera.macAddress || "—"}</span></span>
+              <span className="truncate">SN: {camera.serialNumber || "—"}</span>
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
+              <span className="flex items-center gap-1 truncate pr-2">
+                <Server className="h-3 w-3 shrink-0" />
+                <span className="truncate">{nvrName ? nvrName : "Standalone"}</span>
+              </span>
+              {camera.recording && (
+                <span className="flex items-center gap-1 text-[10px] font-medium text-destructive shrink-0">
+                  <CircleDot className="h-2.5 w-2.5 animate-pulse" /> REC
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -139,6 +112,7 @@ export function CctvPage() {
   const [search, setSearch] = useState("");
   const [zone, setZone] = useState("");
   const [status, setStatus] = useState("");
+  const [nvrFilter, setNvrFilter] = useState("");
   const [detail, setDetail] = useState<CctvCamera | null>(null);
   const [open, setOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
@@ -156,9 +130,10 @@ export function CctvPage() {
             .toLowerCase()
             .includes(q)) &&
         (!zone || c.zone === zone) &&
-        (!status || c.status === status),
+        (!status || c.status === status) &&
+        (!nvrFilter || c.nvrId === nvrFilter),
     );
-  }, [cameras, search, zone, status]);
+  }, [cameras, search, zone, status, nvrFilter]);
 
   const stats = useMemo(
     () => ({
@@ -212,6 +187,7 @@ export function CctvPage() {
         />
         <FilterSelect value={zone} onChange={setZone} options={[...CCTV_ZONE_OPTIONS]} allLabel="All zones" />
         <FilterSelect value={status} onChange={setStatus} options={STATUS_OPTIONS} allLabel="All statuses" />
+        <FilterSelect value={nvrFilter} onChange={setNvrFilter} options={Array.from(nvrsMap.entries()).map(([value, label]) => ({ value, label }))} allLabel="All NVRs" />
       </div>
 
       {loading ? (
@@ -219,11 +195,6 @@ export function CctvPage() {
           {Array.from({ length: 8 }).map((_, i) => (
             <Card key={i} className="overflow-hidden">
               <Skeleton className="h-28 w-full rounded-none" />
-              <div className="space-y-3 p-4">
-                <Skeleton className="h-4 w-2/3" />
-                <Skeleton className="h-3 w-1/2" />
-                <Skeleton className="h-1.5 w-full" />
-              </div>
             </Card>
           ))}
         </div>
