@@ -140,6 +140,20 @@ export async function runDeviceSync() {
           let channelsUsed = 0;
           let discoveredCameraIds: string[] = [];
           
+          const findDeep = (obj: any, keysToFind: string[]): any => {
+            if (!obj || typeof obj !== "object") return null;
+            for (const k of keysToFind) {
+              if (obj[k] !== undefined) return obj[k];
+            }
+            for (const val of Object.values(obj)) {
+              if (typeof val === "object") {
+                const res = findDeep(val, keysToFind);
+                if (res !== null) return res;
+              }
+            }
+            return null;
+          };
+          
           try {
             const proxyInfo = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/ContentMgmt/InputProxy/channels");
             if (proxyInfo && proxyInfo.InputProxyChannelList && proxyInfo.InputProxyChannelList.InputProxyChannel) {
@@ -149,12 +163,21 @@ export async function runDeviceSync() {
               channelsUsed = channels.length;
               
               for (const channel of channels) {
-                const ip = channel.sourceInputPortDescriptor?.ipAddress;
-                const serialRaw = channel.sourceInputPortDescriptor?.serialNumber || channel.serialNumber || channel.sourceInputPortDescriptor?.SN;
+                const ipRaw = findDeep(channel, ["ipAddress", "IpAddress", "IPAddress"]);
+                const ip = ipRaw && typeof ipRaw === "string" ? ipRaw : null;
+                
+                const serialRaw = findDeep(channel, ["serialNumber", "SerialNumber", "SN", "sn"]);
                 const serial = serialRaw ? String(serialRaw) : null;
-                const camModel = channel.sourceInputPortDescriptor?.model;
-                const camFirmware = channel.sourceInputPortDescriptor?.firmwareVersion;
+                
+                const camModelRaw = findDeep(channel, ["model", "Model"]);
+                const camModel = camModelRaw ? String(camModelRaw) : null;
+                
+                const camFirmwareRaw = findDeep(channel, ["firmwareVersion", "FirmwareVersion", "softwareVersion"]);
+                const camFirmware = camFirmwareRaw ? String(camFirmwareRaw) : null;
+                
                 const name = channel.name || `Camera ${channel.id}`;
+                
+                console.log(`[Sync] Camera Extracted -> IP: ${ip}, Name: ${name}, Serial: ${serial}`);
 
                 if (ip && typeof ip === "string") {
                   const existing = await prisma.cctvCamera.findFirst({ where: { ipAddress: ip } });

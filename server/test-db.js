@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function run() { const cams = await prisma.cctvCamera.findMany({take: 5, orderBy: {installedDate: 'desc'}}); console.log(cams); } run().catch(console.error);
