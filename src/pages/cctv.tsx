@@ -118,8 +118,10 @@ export function CctvPage() {
   const [nvrFilter, setNvrFilter] = useState("");
   const [detail, setDetail] = useState<CctvCamera | null>(null);
   const [open, setOpen] = useState(false);
-  const [formOpen, setFormOpen] = useState(false);
-  const [moveOpen, setMoveOpen] = useState(false);
+  const [cameraFormOpen, setCameraFormOpen] = useState(false);
+  const [nvrFormOpen, setNvrFormOpen] = useState(false);
+  const [cameraMoveOpen, setCameraMoveOpen] = useState(false);
+  const [nvrMoveOpen, setNvrMoveOpen] = useState(false);
   const [editingCamera, setEditingCamera] = useState<CctvCamera | null>(null);
   const [installStatus, setInstallStatus] = useState("installed");
 
@@ -164,7 +166,7 @@ export function CctvPage() {
         description="Monitor the camera fleet, recording status and storage health."
         icon={<Camera className="h-5 w-5" />}
       >
-        <Button onClick={() => { setEditingCamera(null); setFormOpen(true); }}>
+        <Button onClick={() => { setEditingCamera(null); setCameraFormOpen(true); }}>
           <Plus className="h-4 w-4" /> Add Camera
         </Button>
       </PageHeader>
@@ -241,12 +243,26 @@ export function CctvPage() {
         </TabsContent>
       </Tabs>
 
-      <CameraFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        camera={editingCamera}
-        onCreated={refetch}
-      />
+      {cameraMoveOpen && (
+        <CameraMoveDialog
+          open={cameraMoveOpen}
+          onOpenChange={setCameraMoveOpen}
+          camera={detail}
+          onUpdated={() => {
+            refetch();
+            historyQ.refetch();
+          }}
+        />
+      )}
+      
+      {cameraFormOpen && (
+        <CameraFormDialog
+          open={cameraFormOpen}
+          onOpenChange={setCameraFormOpen}
+          camera={editingCamera}
+          onCreated={refetch}
+        />
+      )}
 
       <DetailSheet
         open={open}
@@ -298,10 +314,10 @@ export function CctvPage() {
               <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setOpen(false)}>
                 Close
               </Button>
-              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => { setMoveOpen(true); setOpen(false); }}>
+              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => { setCameraMoveOpen(true); setOpen(false); }}>
                 Move
               </Button>
-              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => { setEditingCamera(detail); setFormOpen(true); setOpen(false); }}>
+              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => { setEditingCamera(detail); setCameraFormOpen(true); setOpen(false); }}>
                 Edit
               </Button>
               <Button variant="destructive" className="flex-1 sm:flex-none" onClick={async () => {
@@ -433,8 +449,6 @@ function NvrPanel() {
   const camerasQ = useAsync(() => cctvService.all(), []);
   const [detail, setDetail] = useState<Nvr | null>(null);
   const [open, setOpen] = useState(false);
-  const [formOpen, setFormOpen] = useState(false);
-  const [moveOpen, setMoveOpen] = useState(false);
   const [editingNvr, setEditingNvr] = useState<Nvr | null>(null);
   const [installStatus, setInstallStatus] = useState("installed");
 
@@ -510,19 +524,26 @@ function NvrPanel() {
         <MiniStat label="Storage used" value={`${stats.storage}%`} tone="warning" icon={<HardDrive className="h-5 w-5" />} loading={loading} />
       </div>
 
-      <div className="flex gap-2 border-b pb-4">
-        <Button 
-          variant={installStatus === "installed" ? "default" : "outline"} 
-          onClick={() => setInstallStatus("installed")}
-        >
-          Installed NVRs
-        </Button>
-        <Button 
-          variant={installStatus === "inventory" ? "default" : "outline"} 
-          onClick={() => setInstallStatus("inventory")}
-        >
-          Inventory / Spares
-        </Button>
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2 border-b pb-4 flex-1">
+          <Button 
+            variant={installStatus === "installed" ? "default" : "outline"} 
+            onClick={() => setInstallStatus("installed")}
+          >
+            Installed NVRs
+          </Button>
+          <Button 
+            variant={installStatus === "inventory" ? "default" : "outline"} 
+            onClick={() => setInstallStatus("inventory")}
+          >
+            Inventory / Spares
+          </Button>
+        </div>
+        <div className="pb-4">
+          <Button onClick={() => { setEditingNvr(null); setNvrFormOpen(true); }}>
+            <Plus className="h-4 w-4" /> Add Recorder
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -669,10 +690,10 @@ function NvrPanel() {
               <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => setOpen(false)}>
                 Close
               </Button>
-              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => { setMoveOpen(true); setOpen(false); }}>
+              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => { setNvrMoveOpen(true); setOpen(false); }}>
                 Move
               </Button>
-              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => { setEditingNvr(detail); setFormOpen(true); setOpen(false); }}>
+              <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => { setEditingNvr(detail); setNvrFormOpen(true); setOpen(false); }}>
                 Edit
               </Button>
               <Button variant="destructive" className="flex-1 sm:flex-none" onClick={async () => {
@@ -696,22 +717,26 @@ function NvrPanel() {
           )
         }
       />
-      <NvrFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        nvr={editingNvr}
-        onCreated={refetch}
-      />
+      {nvrFormOpen && (
+        <NvrFormDialog
+          open={nvrFormOpen}
+          onOpenChange={setNvrFormOpen}
+          nvr={editingNvr}
+          onCreated={refetch}
+        />
+      )}
       
-      <NvrMoveDialog
-        open={moveOpen}
-        onOpenChange={setMoveOpen}
-        nvr={detail}
-        onUpdated={() => {
-          refetch();
-          historyQ.refetch();
-        }}
-      />
+      {nvrMoveOpen && (
+        <NvrMoveDialog
+          open={nvrMoveOpen}
+          onOpenChange={setNvrMoveOpen}
+          nvr={detail}
+          onUpdated={() => {
+            refetch();
+            historyQ.refetch();
+          }}
+        />
+      )}
     </div>
   );
 }

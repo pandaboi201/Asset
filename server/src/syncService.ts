@@ -148,7 +148,7 @@ export async function runDeviceSync() {
           
           let storage: any = null;
           try {
-            storage = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/ContentMgmt/Storage");
+            storage = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/ContentMgmt/Storage/hdd");
           } catch (storageErr) {
             console.warn(`[Sync] Storage fetch failed for ${nvr.name}`);
           }
