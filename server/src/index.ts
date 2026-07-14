@@ -42,6 +42,7 @@ const endpointMapping: Record<string, string> = {
   "repairs": "repairTicket",
   "spare-parts": "sparePart",
   "cctv": "cctvCamera",
+  "camera-history": "cameraHistory",
   "nvr": "nvr",
   "upgrades": "deviceUpgrade",
   "part-installations": "partInstallation",

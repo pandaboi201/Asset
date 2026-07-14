@@ -209,6 +209,19 @@ export interface CctvCamera {
   password?: string;
   nvrId: string | null;
   serialNumber?: string;
+  installationStatus: 'installed' | 'inventory' | 'decommissioned';
+  inventoryLocation?: string;
+}
+
+export interface CameraHistory {
+  id: string;
+  cameraId: string;
+  cameraName: string;
+  action: string;
+  fromLocation?: string;
+  toLocation?: string;
+  notes?: string;
+  date: string;
 }
 
 export type NvrStatus = "online" | "offline" | "degraded" | "maintenance";

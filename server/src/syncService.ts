@@ -101,7 +101,10 @@ export async function runDeviceSync() {
     const cameras = await prisma.cctvCamera.findMany();
     const nvrs = await prisma.nvr.findMany();
 
+    // Sync standalone cameras first (exclude inventory)
     for (const cam of cameras) {
+      if (cam.installationStatus === "inventory") continue;
+      
       if (cam.ipAddress && cam.username && cam.password) {
         try {
           const info = await fetchIsapi(cam.ipAddress, cam.username, cam.password, "/ISAPI/System/deviceInfo");
@@ -239,6 +242,7 @@ export async function runDeviceSync() {
                         firmwareVersion: typeof camFirmware === "string" ? camFirmware : "Unknown",
                         nvrId: nvr.id,
                         serialNumber: typeof serial === "string" ? serial : null,
+                        installationStatus: "installed"
                       }
                     });
                     discoveredCameraIds.push(newCam.id);

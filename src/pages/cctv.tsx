@@ -34,6 +34,8 @@ import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { CameraFormDialog } from "@/components/forms/camera-form-dialog";
 import { NvrFormDialog } from "@/components/forms/nvr-form-dialog";
+import { CameraMoveDialog } from "@/components/forms/camera-move-dialog";
+import { cameraHistoryService } from "@/services";
 
 const STATUS_OPTIONS = [
   { label: "Online", value: "online" },
@@ -116,7 +118,11 @@ export function CctvPage() {
   const [detail, setDetail] = useState<CctvCamera | null>(null);
   const [open, setOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const [editingCamera, setEditingCamera] = useState<CctvCamera | null>(null);
+  const [installStatus, setInstallStatus] = useState("installed");
+
+  const historyQ = useAsync(() => cameraHistoryService.all(), [open]);
 
   const cameras = data ?? [];
 
@@ -131,15 +137,16 @@ export function CctvPage() {
             .includes(q)) &&
         (!zone || c.zone === zone) &&
         (!status || c.status === status) &&
-        (!nvrFilter || c.nvrId === nvrFilter),
+        (!nvrFilter || c.nvrId === nvrFilter) &&
+        (c.installationStatus === installStatus),
     );
-  }, [cameras, search, zone, status, nvrFilter]);
+  }, [cameras, search, zone, status, nvrFilter, installStatus]);
 
   const stats = useMemo(
     () => ({
-      online: cameras.filter((c) => c.status !== "offline").length,
-      offline: cameras.filter((c) => c.status === "offline").length,
-      recording: cameras.filter((c) => c.recording).length,
+      online: cameras.filter((c) => c.status !== "offline" && c.installationStatus === "installed").length,
+      offline: cameras.filter((c) => c.status === "offline" && c.installationStatus === "installed").length,
+      recording: cameras.filter((c) => c.recording && c.installationStatus === "installed").length,
     }),
     [cameras],
   );
@@ -173,9 +180,24 @@ export function CctvPage() {
 
         <TabsContent value="cameras" className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MiniStat label="Online" value={stats.online} tone="success" icon={<Wifi className="h-5 w-5" />} loading={loading} />
-        <MiniStat label="Offline" value={stats.offline} tone="destructive" icon={<WifiOff className="h-5 w-5" />} loading={loading} />
+        <MiniStat label="Online (Installed)" value={stats.online} tone="success" icon={<Wifi className="h-5 w-5" />} loading={loading} />
+        <MiniStat label="Offline (Installed)" value={stats.offline} tone="destructive" icon={<WifiOff className="h-5 w-5" />} loading={loading} />
         <MiniStat label="Recording" value={stats.recording} tone="info" icon={<Radio className="h-5 w-5" />} loading={loading} />
+      </div>
+
+      <div className="flex gap-2 border-b pb-4">
+        <Button 
+          variant={installStatus === "installed" ? "default" : "outline"} 
+          onClick={() => setInstallStatus("installed")}
+        >
+          Installed Cameras
+        </Button>
+        <Button 
+          variant={installStatus === "inventory" ? "default" : "outline"} 
+          onClick={() => setInstallStatus("inventory")}
+        >
+          Inventory / Spares
+        </Button>
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -247,12 +269,25 @@ export function CctvPage() {
                   rows: [
                     { label: "Location", value: detail.location },
                     { label: "Zone", value: detail.zone },
+                    { label: "Status", value: <span className="capitalize font-medium">{detail.installationStatus}</span> },
                     { label: "Recording", value: detail.recording ? "Yes" : "No" },
                     { label: "Connected NVR", value: detail.nvrId ? (nvrsMap.get(detail.nvrId) || detail.nvrId) : "Standalone" },
                     { label: "Serial Number", value: detail.serialNumber || "—" },
                     { label: "Installed", value: formatDate(detail.installedDate) },
                   ],
                 },
+                ...(historyQ.data?.filter(h => h.cameraId === detail.id).length ? [{
+                  title: "History Timeline",
+                  rows: historyQ.data.filter(h => h.cameraId === detail.id).map(h => ({
+                    label: formatDate(h.date),
+                    value: (
+                      <div className="text-right">
+                        <p className="font-medium">{h.action}</p>
+                        {h.notes && <p className="text-xs text-muted-foreground">{h.notes}</p>}
+                      </div>
+                    )
+                  }))
+                }] : []),
               ]
             : []
         }
@@ -261,6 +296,9 @@ export function CctvPage() {
             <>
               <Button variant="outline" onClick={() => setOpen(false)}>
                 Close
+              </Button>
+              <Button variant="outline" onClick={() => { setMoveOpen(true); setOpen(false); }}>
+                Move / Change Status
               </Button>
               <Button variant="outline" onClick={() => { setEditingCamera(detail); setFormOpen(true); setOpen(false); }}>
                 Edit
@@ -285,6 +323,13 @@ export function CctvPage() {
             </>
           )
         }
+      />
+      
+      <CameraMoveDialog
+        open={moveOpen}
+        onOpenChange={setMoveOpen}
+        camera={detail}
+        onUpdated={refetch}
       />
     </div>
   );

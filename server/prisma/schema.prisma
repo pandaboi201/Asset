@@ -67,9 +67,22 @@ model CctvCamera {
   installedDate   String
   firmwareVersion String
   username        String?
-  password        String?
-  nvrId           String?
-  serialNumber    String?
+  password           String?
+  nvrId              String?
+  serialNumber       String?
+  installationStatus String  @default("installed") // "installed", "inventory", "decommissioned"
+  inventoryLocation  String?
+}
+
+model CameraHistory {
+  id           String @id
+  cameraId     String
+  cameraName   String
+  action       String // e.g. "Installed", "Moved", "Uninstalled", "Replaced"
+  fromLocation String?
+  toLocation   String?
+  notes        String?
+  date         String
 }
 
 model DeviceIssue {
