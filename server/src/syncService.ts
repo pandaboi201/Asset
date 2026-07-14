@@ -131,26 +131,67 @@ export async function runDeviceSync() {
           const storage = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/ContentMgmt/Storage");
           
           let channelsUsed = 0;
+          let discoveredCameraIds: string[] = [];
+          
           try {
-            const channelsInfo = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/System/Video/inputs/channels");
-            if (channelsInfo && channelsInfo.VideoInputChannelList && channelsInfo.VideoInputChannelList.VideoInputChannel) {
-              const channels = Array.isArray(channelsInfo.VideoInputChannelList.VideoInputChannel) 
-                ? channelsInfo.VideoInputChannelList.VideoInputChannel 
-                : [channelsInfo.VideoInputChannelList.VideoInputChannel];
+            const proxyInfo = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/ContentMgmt/InputProxy/channels");
+            if (proxyInfo && proxyInfo.InputProxyChannelList && proxyInfo.InputProxyChannelList.InputProxyChannel) {
+              const channels = Array.isArray(proxyInfo.InputProxyChannelList.InputProxyChannel) 
+                ? proxyInfo.InputProxyChannelList.InputProxyChannel 
+                : [proxyInfo.InputProxyChannelList.InputProxyChannel];
               channelsUsed = channels.length;
+              
+              for (const channel of channels) {
+                const ip = channel.sourceInputPortDescriptor?.ipAddress;
+                const mac = channel.sourceInputPortDescriptor?.macAddress;
+                const name = channel.name || `Camera ${channel.id}`;
+
+                if (ip) {
+                  const existing = await prisma.cctvCamera.findFirst({ where: { ipAddress: ip } });
+                  if (existing) {
+                    await prisma.cctvCamera.update({
+                      where: { id: existing.id },
+                      data: { nvrId: nvr.id }
+                    });
+                    discoveredCameraIds.push(existing.id);
+                  } else {
+                    const newCam = await prisma.cctvCamera.create({
+                      data: {
+                        id: `cam-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+                        name,
+                        location: "Unknown",
+                        zone: "Discovered by NVR",
+                        ipAddress: ip,
+                        model: "Unknown",
+                        resolution: "Unknown",
+                        status: "online",
+                        recording: true,
+                        storageUsedGb: 0,
+                        storageTotalGb: 0,
+                        lastPing: new Date().toISOString(),
+                        installedDate: new Date().toISOString(),
+                        firmwareVersion: "Unknown",
+                        nvrId: nvr.id,
+                        macAddress: mac || null,
+                      }
+                    });
+                    discoveredCameraIds.push(newCam.id);
+                  }
+                }
+              }
             }
           } catch (e) {
-            console.warn(`[Sync] Could not fetch standard channels, trying InputProxy fallback...`);
+            console.warn(`[Sync] InputProxy channels failed, trying standard Video/inputs/channels fallback...`);
             try {
-              const proxyInfo = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/ContentMgmt/InputProxy/channels");
-              if (proxyInfo && proxyInfo.InputProxyChannelList && proxyInfo.InputProxyChannelList.InputProxyChannel) {
-                const channels = Array.isArray(proxyInfo.InputProxyChannelList.InputProxyChannel) 
-                  ? proxyInfo.InputProxyChannelList.InputProxyChannel 
-                  : [proxyInfo.InputProxyChannelList.InputProxyChannel];
+              const channelsInfo = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/System/Video/inputs/channels");
+              if (channelsInfo && channelsInfo.VideoInputChannelList && channelsInfo.VideoInputChannelList.VideoInputChannel) {
+                const channels = Array.isArray(channelsInfo.VideoInputChannelList.VideoInputChannel) 
+                  ? channelsInfo.VideoInputChannelList.VideoInputChannel 
+                  : [channelsInfo.VideoInputChannelList.VideoInputChannel];
                 channelsUsed = channels.length;
               }
             } catch (e2) {
-               console.warn(`[Sync] InputProxy channels also failed.`);
+               console.warn(`[Sync] Both InputProxy and standard channels failed.`);
             }
           }
             let recordingRetentionDays = 0;
@@ -225,6 +266,16 @@ export async function runDeviceSync() {
           
           if (recordingRetentionDays > 0) {
             updateData.recordingRetentionDays = recordingRetentionDays;
+          }
+          
+          if (discoveredCameraIds.length > 0) {
+            let existingIds: string[] = [];
+            try {
+              existingIds = JSON.parse(nvr.connectedCameraIds || "[]");
+            } catch (e) {}
+            
+            const mergedIds = Array.from(new Set([...existingIds, ...discoveredCameraIds]));
+            updateData.connectedCameraIds = JSON.stringify(mergedIds);
           }
           
           await prisma.nvr.update({
