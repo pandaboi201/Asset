@@ -94,6 +94,7 @@ app.post("/api/isapi/test", async (req, res) => {
     }
 
     const info = await fetchIsapi(ipAddress, username, password, "/ISAPI/System/deviceInfo");
+    const modelStr = info?.DeviceInfo?.model || "";
     
     let storageTotalTb = 0;
     let storageUsedTb = 0;
@@ -131,6 +132,19 @@ app.post("/api/isapi/test", async (req, res) => {
           channelsTotal = channels.length;
         }
       } catch (e2) {}
+    }
+    
+    let channelsTotalFromModel = 0;
+    const match = modelStr.match(/DS-\d{2}(\d{2})/i);
+    if (match && match[1]) {
+      const parsed = parseInt(match[1], 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        channelsTotalFromModel = parsed;
+      }
+    }
+    
+    if (channelsTotalFromModel > 0) {
+      channelsTotal = channelsTotalFromModel;
     }
 
     let recordingRetentionDays = 0;

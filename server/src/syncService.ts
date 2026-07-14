@@ -73,6 +73,18 @@ export function calculateStorage(hddList: any) {
   return { storageTotalTb, storageUsedTb };
 }
 
+export function extractChannelsTotalFromModel(model: string): number | null {
+  if (!model) return null;
+  const match = model.match(/DS-\d{2}(\d{2})/i);
+  if (match && match[1]) {
+    const channels = parseInt(match[1], 10);
+    if (!isNaN(channels) && channels > 0) {
+      return channels;
+    }
+  }
+  return null;
+}
+
 /**
  * Syncs all cameras and NVRs from the database
  */
@@ -187,6 +199,11 @@ export async function runDeviceSync() {
             updateData.model = info.DeviceInfo.model || nvr.model;
             updateData.serialNumber = info.DeviceInfo.serialNumber || nvr.serialNumber;
             updateData.macAddress = info.DeviceInfo.macAddress || nvr.macAddress;
+            
+            const extractedChannels = extractChannelsTotalFromModel(updateData.model);
+            if (extractedChannels) {
+              updateData.channelsTotal = extractedChannels;
+            }
           }
           
           if (storage) {
