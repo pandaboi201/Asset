@@ -55,20 +55,22 @@ export async function fetchIsapi(ip: string, username?: string | null, password?
 
 export function calculateStorage(hddList: any) {
   if (!hddList || !hddList.hdd) return null;
-  // fast-xml-parser might return a single object instead of an array if there's only 1 HDD
   const hdds = Array.isArray(hddList.hdd) ? hddList.hdd : [hddList.hdd];
-  
+
   let totalMb = 0;
   let freeMb = 0;
   
   for (const hdd of hdds) {
-    totalMb += Number(hdd.capacity) || 0;
-    freeMb += Number(hdd.freeSpace) || 0;
+    if (hdd && hdd.capacity) {
+      totalMb += Number(hdd.capacity) || 0;
+      freeMb += Number(hdd.freeSpace) || 0;
+    }
   }
   
-  // Hikvision usually returns capacity in MB
   const storageTotalTb = Number((totalMb / 1000000).toFixed(2));
   const storageUsedTb = Number(((totalMb - freeMb) / 1000000).toFixed(2));
+  
+  if (storageTotalTb === 0 || isNaN(storageTotalTb) || isNaN(storageUsedTb)) return null;
   
   return { storageTotalTb, storageUsedTb };
 }
@@ -128,7 +130,13 @@ export async function runDeviceSync() {
         try {
           console.log(`[Sync] Fetching NVR info for ${nvr.name} at ${nvr.ipAddress}...`);
           const info = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/System/deviceInfo");
-          const storage = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/ContentMgmt/Storage");
+          
+          let storage: any = null;
+          try {
+            storage = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/ContentMgmt/Storage");
+          } catch (storageErr) {
+            console.warn(`[Sync] Storage fetch failed for ${nvr.name}`);
+          }
           
           let channelsUsed = 0;
           let discoveredCameraIds: string[] = [];
