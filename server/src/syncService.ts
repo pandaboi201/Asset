@@ -3,7 +3,10 @@ import { PrismaClient } from "@prisma/client";
 import { XMLParser } from "fast-xml-parser";
 
 const prisma = new PrismaClient();
-const parser = new XMLParser();
+const parser = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: "@_"
+});
 
 
 
@@ -163,16 +166,16 @@ export async function runDeviceSync() {
               channelsUsed = channels.length;
               
               for (const channel of channels) {
-                const ipRaw = findDeep(channel, ["ipAddress", "IpAddress", "IPAddress"]);
+                const ipRaw = findDeep(channel, ["ipAddress", "IpAddress", "IPAddress", "@_ipAddress", "@_IpAddress", "@_IPAddress"]);
                 const ip = ipRaw && typeof ipRaw === "string" ? ipRaw : null;
                 
-                const serialRaw = findDeep(channel, ["serialNumber", "SerialNumber", "SN", "sn"]);
+                const serialRaw = findDeep(channel, ["serialNumber", "SerialNumber", "SN", "sn", "@_serialNumber", "@_SerialNumber", "@_SN", "@_sn"]);
                 const serial = serialRaw ? String(serialRaw) : null;
                 
-                const camModelRaw = findDeep(channel, ["model", "Model"]);
+                const camModelRaw = findDeep(channel, ["model", "Model", "@_model", "@_Model"]);
                 const camModel = camModelRaw ? String(camModelRaw) : null;
                 
-                const camFirmwareRaw = findDeep(channel, ["firmwareVersion", "FirmwareVersion", "softwareVersion"]);
+                const camFirmwareRaw = findDeep(channel, ["firmwareVersion", "FirmwareVersion", "softwareVersion", "@_firmwareVersion", "@_FirmwareVersion", "@_softwareVersion"]);
                 const camFirmware = camFirmwareRaw ? String(camFirmwareRaw) : null;
                 
                 const name = channel.name || `Camera ${channel.id}`;
