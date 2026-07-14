@@ -252,6 +252,19 @@ export interface Nvr {
   connectedCameraIds: string[];
   alerts?: string[];
   supportedEvents?: string[];
+  installationStatus: 'installed' | 'inventory' | 'decommissioned';
+  inventoryLocation?: string;
+}
+
+export interface NvrHistory {
+  id: string;
+  nvrId: string;
+  nvrName: string;
+  action: string;
+  fromLocation?: string;
+  toLocation?: string;
+  notes?: string;
+  date: string;
 }
 
 export type UpgradeType =

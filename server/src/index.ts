@@ -44,6 +44,7 @@ const endpointMapping: Record<string, string> = {
   "cctv": "cctvCamera",
   "camera-history": "cameraHistory",
   "nvr": "nvr",
+  "nvr-history": "nvrHistory",
   "upgrades": "deviceUpgrade",
   "part-installations": "partInstallation",
 };

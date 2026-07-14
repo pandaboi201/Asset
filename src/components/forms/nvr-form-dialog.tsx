@@ -15,9 +15,10 @@ const STATUSES = ["online", "offline", "maintenance"];
 
 const schema = z.object({
   name: z.string().min(2, "Name is required"),
-  ipAddress: z.string().regex(/^(\d{1,3}\.){3}\d{1,3}$/, "Enter a valid IPv4 address"),
-  username: z.string().min(1, "Username is required"),
-  password: z.string().min(1, "Password is required"),
+  installationStatus: z.enum(["installed", "inventory"]).default("installed"),
+  ipAddress: z.string().optional(),
+  username: z.string().optional(),
+  password: z.string().optional(),
   
   manufacturer: z.string().optional(),
   model: z.string().optional(),
@@ -51,11 +52,14 @@ export function NvrFormDialog({
     reset,
     getValues,
     setValue,
+    watch,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: "",
+      installationStatus: "installed",
       ipAddress: "",
       username: "",
       password: "",
@@ -77,6 +81,7 @@ export function NvrFormDialog({
       if (nvr) {
         reset({
           name: nvr.name,
+          installationStatus: (nvr.installationStatus as "installed" | "inventory") || "installed",
           manufacturer: nvr.manufacturer,
           model: nvr.model,
           serialNumber: nvr.serialNumber || "",
@@ -93,6 +98,7 @@ export function NvrFormDialog({
       } else {
         reset({
           name: "",
+          installationStatus: "installed",
           ipAddress: "",
           username: "",
           password: "",
@@ -112,8 +118,11 @@ export function NvrFormDialog({
 
   const [isTesting, setIsTesting] = useState(false);
 
+  const installStatus = watch("installationStatus");
+
   const handleTestConnection = async () => {
-    const { ipAddress, username, password } = getValues();
+    const values = getValues();
+    const { ipAddress, username, password } = values;
     if (!ipAddress || !username || !password) {
       toast.error("Please fill in IP address, username, and password first.");
       return;
@@ -149,50 +158,74 @@ export function NvrFormDialog({
   const submit = handleSubmit(async (values) => {
     const now = new Date().toISOString();
     try {
+      if (values.installationStatus === "installed") {
+        if (!values.ipAddress || !/^(\d{1,3}\.){3}\d{1,3}$/.test(values.ipAddress)) {
+          setError("ipAddress", { message: "Valid IPv4 address is required for installed NVRs" });
+          return;
+        }
+        if (!values.username) {
+          setError("username", { message: "Username is required" });
+          return;
+        }
+        if (!values.password) {
+          setError("password", { message: "Password is required" });
+          return;
+        }
+      }
+
       if (isEdit && nvr) {
         await nvrService.update(nvr.id, {
           ...values,
+          ipAddress: values.ipAddress || "0.0.0.0",
         });
         toast.success(`Recorder ${values.name} updated`);
       } else {
-        toast.info("Fetching device details from API...");
-        
         let apiData: any = {};
-        try {
-          const response = await fetch("/api/isapi/test", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-              ipAddress: values.ipAddress, 
-              username: values.username, 
-              password: values.password 
-            })
-          });
-          const data = await response.json();
-          if (!response.ok) {
-            throw new Error(data.error || "Failed to connect to NVR API");
+        
+        if (values.installationStatus === "installed") {
+          toast.info("Fetching device details from API...");
+          try {
+            const response = await fetch("/api/isapi/test", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ 
+                ipAddress: values.ipAddress, 
+                username: values.username, 
+                password: values.password 
+              })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+              throw new Error(data.error || "Failed to connect to NVR API");
+            }
+            apiData = data;
+          } catch (apiError: any) {
+            throw new Error("API Fetch failed: " + apiError.message + ". Please check credentials.");
           }
-          apiData = data;
-        } catch (apiError: any) {
-          throw new Error("API Fetch failed: " + apiError.message + ". Please check credentials.");
         }
 
         await nvrService.create({
           id: `nvr-${Date.now()}`,
-          ...values,
+          name: values.name,
           manufacturer: apiData.manufacturer || values.manufacturer || "Unknown",
           model: apiData.model || values.model || "Unknown",
           serialNumber: apiData.serialNumber || values.serialNumber || "",
           location: values.location || "Unknown",
-          status: values.status || "online",
-          firmwareVersion: apiData.firmwareVersion || values.firmwareVersion || "Unknown",
+          ipAddress: values.ipAddress || "0.0.0.0",
+          status: values.installationStatus === "inventory" ? "offline" : (values.status || "online"),
+          installationStatus: values.installationStatus,
           channelsTotal: apiData.channelsTotal || values.channelsTotal || 16,
-          storageTotalTb: apiData.storageTotalTb || values.storageTotalTb || 0,
-          recordingRetentionDays: values.recordingRetentionDays || 30,
-          channelsUsed: 0,
-          storageUsedTb: 0,
+          channelsUsed: apiData.channelsUsed || 0,
+          storageTotalTb: apiData.storageTotalTb || values.storageTotalTb || 8,
+          storageUsedTb: apiData.storageUsedTb || 0,
+          recordingRetentionDays: apiData.recordingRetentionDays || values.recordingRetentionDays || 30,
+          firmwareVersion: apiData.firmwareVersion || values.firmwareVersion || "v1.0",
           installedDate: now,
+          username: values.username || "",
+          password: values.password || "",
           connectedCameraIds: "[]",
+          alerts: "[]",
+          supportedEvents: "[]"
         } as unknown as Nvr);
         toast.success(`Recorder ${values.name} added successfully`);
       }
@@ -214,25 +247,50 @@ export function NvrFormDialog({
       submitLabel={isEdit ? "Save changes" : "Add recorder"}
       submitting={isSubmitting}
     >
-      <FormField label="Name" required error={errors.name?.message}>
+      <FormField label="NVR Name / ID" required error={errors.name?.message}>
         <Input placeholder="NVR-01" {...register("name")} />
       </FormField>
-      <FormField label="IP address" required error={errors.ipAddress?.message}>
-        <Input placeholder="10.20.1.100" {...register("ipAddress")} />
+
+      <FormField label="Status" required error={errors.installationStatus?.message}>
+        <FormSelect
+          control={control}
+          name="installationStatus"
+          placeholder="Select status"
+          options={[
+            { label: "Installed (Active)", value: "installed" },
+            { label: "Inventory (Spare)", value: "inventory" },
+          ]}
+        />
       </FormField>
+
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="Username" required error={errors.username?.message}>
-          <Input placeholder="admin" {...register("username")} />
+        <FormField label={installStatus === "inventory" ? "Warehouse / Box" : "Location"} required error={errors.location?.message}>
+          <Input placeholder={installStatus === "inventory" ? "Shelf B1" : "Server Room A"} {...register("location")} />
         </FormField>
-        <FormField label="Password" required error={errors.password?.message}>
-          <Input type="password" placeholder="••••••••" {...register("password")} />
+        <FormField label="IP Address" required={installStatus === "installed"} error={errors.ipAddress?.message}>
+          <Input placeholder="192.168.1.100" {...register("ipAddress")} disabled={installStatus === "inventory"} />
         </FormField>
       </div>
 
-      {!isEdit && (
-        <p className="text-sm text-muted-foreground pt-4 pb-2">
-          Other details (Manufacturer, Model, Storage, etc.) will be automatically fetched from the NVR API upon submission.
-        </p>
+      <div className="grid grid-cols-2 gap-4">
+        <FormField label="Username" required={installStatus === "installed"} error={errors.username?.message}>
+          <Input placeholder="admin" {...register("username")} disabled={installStatus === "inventory"} />
+        </FormField>
+        <FormField label="Password" required={installStatus === "installed"} error={errors.password?.message}>
+          <Input type="password" placeholder="••••••••" {...register("password")} disabled={installStatus === "inventory"} />
+        </FormField>
+      </div>
+
+      {!isEdit && installStatus === "installed" && (
+        <Button 
+          type="button" 
+          variant="secondary" 
+          className="w-full" 
+          onClick={handleTestConnection}
+          disabled={isTesting}
+        >
+          {isTesting ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : "Test Connection & Auto-fill"}
+        </Button>
       )}
 
       {isEdit && (

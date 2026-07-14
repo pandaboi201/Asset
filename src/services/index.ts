@@ -12,6 +12,7 @@ import type {
   RepairTicket,
   SparePart,
   User,
+  NvrHistory,
   CameraHistory,
 } from "@/types";
 
@@ -37,6 +38,7 @@ export const sparePartService = createCollectionService<SparePart>("spare-parts"
 export const cctvService = createCollectionService<CctvCamera>("cctv");
 export const cameraHistoryService = createCollectionService<CameraHistory>("camera-history");
 export const nvrService = createCollectionService<Nvr>("nvr");
+export const nvrHistoryService = createCollectionService<NvrHistory>("nvr-history");
 
 export const upgradeService = createCollectionService<DeviceUpgrade>("upgrades");
 

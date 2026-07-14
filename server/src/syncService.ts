@@ -135,7 +135,11 @@ export async function runDeviceSync() {
     for (const nvr of nvrs) {
       if (nvr.ipAddress && nvr.username && nvr.password) {
         try {
-          console.log(`[Sync] Fetching NVR info for ${nvr.name} at ${nvr.ipAddress}...`);
+          if (nvr.installationStatus === 'inventory' || nvr.installationStatus === 'decommissioned') {
+        continue;
+      }
+
+      console.log(`[Sync] Fetching NVR info for ${nvr.name} at ${nvr.ipAddress}...`);
           const info = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/System/deviceInfo");
           
           let storage: any = null;

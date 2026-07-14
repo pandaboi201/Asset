@@ -17,11 +17,10 @@ const STATUSES = ["online", "recording", "offline", "maintenance"];
 
 const schema = z.object({
   name: z.string().min(2, "Name is required"),
-  location: z.string().min(2, "Location is required"),
+  installationStatus: z.enum(["installed", "inventory"]).default("installed"),
+  location: z.string().min(2, "Location/Warehouse is required"),
   zone: z.string().min(1, "Select a zone"),
-  ipAddress: z
-    .string()
-    .regex(/^(\d{1,3}\.){3}\d{1,3}$/, "Enter a valid IPv4 address"),
+  ipAddress: z.string().optional(),
   model: z.string().min(1, "Model is required"),
   resolution: z.string().min(1, "Select a resolution"),
   status: z.string().min(1, "Select a status"),
@@ -50,6 +49,8 @@ export function CameraFormDialog({
     reset,
     getValues,
     setValue,
+    watch,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<Values>({
     resolver: zodResolver(schema),
@@ -64,11 +65,14 @@ export function CameraFormDialog({
     },
   });
 
+  const installStatus = watch("installationStatus");
+
   useEffect(() => {
     if (open) {
       if (camera) {
         reset({
           name: camera.name,
+          installationStatus: (camera.installationStatus as "installed" | "inventory") || "installed",
           location: camera.location,
           zone: camera.zone,
           ipAddress: camera.ipAddress,
@@ -81,6 +85,7 @@ export function CameraFormDialog({
       } else {
         reset({
           name: "",
+          installationStatus: "installed",
           location: "",
           zone: "",
           ipAddress: "",
@@ -127,9 +132,18 @@ export function CameraFormDialog({
   const submit = handleSubmit(async (values) => {
     const now = new Date().toISOString();
     try {
+      // Validate IP address if installing
+      if (values.installationStatus === "installed") {
+        if (!values.ipAddress || !/^(\d{1,3}\.){3}\d{1,3}$/.test(values.ipAddress)) {
+          setError("ipAddress", { message: "Valid IPv4 address is required for installed cameras" });
+          return;
+        }
+      }
+
       if (isEdit && camera) {
         await cctvService.update(camera.id, {
           ...values,
+          ipAddress: values.ipAddress || "0.0.0.0",
           recording: values.status === "recording",
         });
         toast.success(`${values.name} updated successfully`);
@@ -139,11 +153,12 @@ export function CameraFormDialog({
           name: values.name,
           location: values.location,
           zone: values.zone,
-          ipAddress: values.ipAddress,
+          ipAddress: values.ipAddress || "0.0.0.0",
           model: values.model,
           resolution: values.resolution,
-          status: values.status as CameraStatus,
-          recording: values.status === "recording",
+          status: values.installationStatus === "inventory" ? "offline" : (values.status as CameraStatus),
+          recording: values.installationStatus === "inventory" ? false : values.status === "recording",
+          installationStatus: values.installationStatus,
           storageUsedGb: 0,
           storageTotalGb: 2000,
           lastPing: now,
@@ -171,14 +186,25 @@ export function CameraFormDialog({
       submitLabel={isEdit ? "Save changes" : "Add camera"}
       submitting={isSubmitting}
     >
-      <FormField label="Camera name" required error={errors.name?.message}>
+      <FormField label="Camera Name / ID" required error={errors.name?.message}>
         <Input placeholder="CAM-25" {...register("name")} />
       </FormField>
-      <FormField label="IP address" required error={errors.ipAddress?.message}>
-        <Input placeholder="10.20.1.50" {...register("ipAddress")} />
+      <FormField label="Status" required error={errors.installationStatus?.message}>
+        <FormSelect
+          control={control}
+          name="installationStatus"
+          placeholder="Select status"
+          options={[
+            { label: "Installed (Active)", value: "installed" },
+            { label: "Inventory (Spare)", value: "inventory" },
+          ]}
+        />
       </FormField>
-      <FormField label="Location" required error={errors.location?.message}>
-        <Input placeholder="Main Entrance North" {...register("location")} />
+      <FormField label={installStatus === "inventory" ? "Warehouse / Box" : "Location"} required error={errors.location?.message}>
+        <Input placeholder={installStatus === "inventory" ? "Shelf A2" : "Main Entrance North"} {...register("location")} />
+      </FormField>
+      <FormField label="IP address" required={installStatus === "installed"} error={errors.ipAddress?.message}>
+        <Input placeholder="10.20.1.50" {...register("ipAddress")} disabled={installStatus === "inventory"} />
       </FormField>
       <FormField label="Zone" required error={errors.zone?.message}>
         <FormSelect

@@ -27,7 +27,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAsync } from "@/hooks/use-async";
-import { cctvService, nvrService } from "@/services";
+import { cctvService, nvrService, nvrHistoryService } from "@/services";
 import { CCTV_ZONE_OPTIONS } from "@/config/constants";
 import { formatDate, formatRelativeTime } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { CameraFormDialog } from "@/components/forms/camera-form-dialog";
 import { NvrFormDialog } from "@/components/forms/nvr-form-dialog";
 import { CameraMoveDialog } from "@/components/forms/camera-move-dialog";
+import { NvrMoveDialog } from "@/components/forms/nvr-move-dialog";
 import { cameraHistoryService } from "@/services";
 
 const STATUS_OPTIONS = [
@@ -433,9 +434,17 @@ function NvrPanel() {
   const [detail, setDetail] = useState<Nvr | null>(null);
   const [open, setOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const [editingNvr, setEditingNvr] = useState<Nvr | null>(null);
+  const [installStatus, setInstallStatus] = useState("installed");
 
-  const nvrs = data ?? [];
+  const historyQ = useAsync(() => nvrHistoryService.all(), [open]);
+
+  const allNvrs = data ?? [];
+
+  const nvrs = useMemo(() => {
+    return allNvrs.filter((n) => n.installationStatus === installStatus);
+  }, [allNvrs, installStatus]);
 
   const cameraMap = useMemo(() => {
     const map = new Map<string, CctvCamera>();
@@ -445,16 +454,16 @@ function NvrPanel() {
 
   const stats = useMemo(
     () => ({
-      total: nvrs.length,
-      online: nvrs.filter((n) => n.status === "online").length,
-      channels: nvrs.reduce((s, n) => s + n.channelsUsed, 0),
+      total: allNvrs.length,
+      online: allNvrs.filter((n) => n.status === "online" && n.installationStatus === "installed").length,
+      channels: allNvrs.filter((n) => n.installationStatus === "installed").reduce((s, n) => s + n.channelsUsed, 0),
       storage: Math.round(
         (nvrs.reduce((s, n) => s + n.storageUsedTb, 0) /
           Math.max(nvrs.reduce((s, n) => s + n.storageTotalTb, 0), 1)) *
           100,
-      ),
+      ) || 0,
     }),
-    [nvrs],
+    [allNvrs],
   );
 
   let parsedIds: string[] = [];
@@ -484,10 +493,25 @@ function NvrPanel() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MiniStat label="Recorders" value={stats.total} icon={<Server className="h-5 w-5" />} loading={loading} />
+        <MiniStat label="Recorders (Installed)" value={stats.total} icon={<Server className="h-5 w-5" />} loading={loading} />
         <MiniStat label="Online" value={stats.online} tone="success" icon={<Wifi className="h-5 w-5" />} loading={loading} />
         <MiniStat label="Channels in use" value={stats.channels} tone="info" icon={<Video className="h-5 w-5" />} loading={loading} />
         <MiniStat label="Storage used" value={`${stats.storage}%`} tone="warning" icon={<HardDrive className="h-5 w-5" />} loading={loading} />
+      </div>
+
+      <div className="flex gap-2 border-b pb-4">
+        <Button 
+          variant={installStatus === "installed" ? "default" : "outline"} 
+          onClick={() => setInstallStatus("installed")}
+        >
+          Installed NVRs
+        </Button>
+        <Button 
+          variant={installStatus === "inventory" ? "default" : "outline"} 
+          onClick={() => setInstallStatus("inventory")}
+        >
+          Inventory / Spares
+        </Button>
       </div>
 
       {loading ? (
@@ -592,6 +616,39 @@ function NvrPanel() {
                         },
                       ],
                 },
+                {
+                  title: "History Timeline",
+                  rows: (() => {
+                    if (!historyQ.data) return [{ label: "Loading...", value: "" }];
+                    const nvrHist = historyQ.data
+                      .filter((h) => h.nvrId === detail.id)
+                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                    
+                    if (nvrHist.length === 0) return [{ label: "—", value: <span className="text-muted-foreground">No history recorded</span> }];
+
+                    return nvrHist.map(h => ({
+                      label: (
+                        <div className="flex flex-col gap-1 py-1">
+                          <span className="font-medium text-foreground">{h.action}</span>
+                          <span className="text-[10px] text-muted-foreground">{formatDate(h.date)}</span>
+                          {h.notes && <span className="text-xs text-muted-foreground italic">"{h.notes}"</span>}
+                        </div>
+                      ),
+                      value: (
+                        <div className="flex flex-col text-right justify-center">
+                          {h.fromLocation && h.toLocation && h.fromLocation !== h.toLocation ? (
+                            <>
+                              <span className="text-xs line-through text-muted-foreground">{h.fromLocation}</span>
+                              <span className="text-xs">{h.toLocation}</span>
+                            </>
+                          ) : (
+                            <span className="text-xs">{h.toLocation || h.fromLocation}</span>
+                          )}
+                        </div>
+                      )
+                    }));
+                  })()
+                }
               ]
             : []
         }
@@ -603,6 +660,9 @@ function NvrPanel() {
               </Button>
               <Button variant="outline" onClick={() => { setEditingNvr(detail); setFormOpen(true); setOpen(false); }}>
                 Edit
+              </Button>
+              <Button variant="outline" onClick={() => { setMoveOpen(true); }}>
+                Move / Change Status
               </Button>
               <Button variant="destructive" onClick={async () => {
                 if (confirm("Are you sure you want to delete this NVR?")) {
@@ -630,6 +690,16 @@ function NvrPanel() {
         onOpenChange={setFormOpen}
         nvr={editingNvr}
         onCreated={refetch}
+      />
+      
+      <NvrMoveDialog
+        open={moveOpen}
+        onOpenChange={setMoveOpen}
+        nvr={detail}
+        onUpdated={() => {
+          refetch();
+          historyQ.refetch();
+        }}
       />
     </div>
   );
