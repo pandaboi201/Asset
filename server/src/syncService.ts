@@ -181,6 +181,9 @@ export async function runDeviceSync() {
                 const name = channel.name || `Camera ${channel.id}`;
                 
                 console.log(`[Sync] Camera Extracted -> IP: ${ip}, Name: ${name}, Serial: ${serial}`);
+                if (!serial) {
+                   console.log(`[Sync] RAW CHANNEL JSON for missing serial:`, JSON.stringify(channel, null, 2));
+                }
 
                 if (ip && typeof ip === "string") {
                   const existing = await prisma.cctvCamera.findFirst({ where: { ipAddress: ip } });
