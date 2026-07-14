@@ -52,6 +52,7 @@ function CameraTile({
   onOpen: (c: CctvCamera) => void;
   index: number;
   nvrName?: string | null;
+}) {
   const offline = camera.status === "offline";
   return (
     <motion.div
