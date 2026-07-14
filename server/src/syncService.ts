@@ -126,6 +126,10 @@ export async function runDeviceSync() {
           }
         } catch (e: any) {
           console.error(`[Sync] Failed to sync camera ${cam.name}:`, e.message);
+          await prisma.cctvCamera.update({
+            where: { id: cam.id },
+            data: { status: "offline", lastPing: new Date().toISOString() }
+          });
         }
       } else {
         console.log(`[Sync] Skipping camera ${cam.name} (Missing IP, username, or password)`);
@@ -174,6 +178,12 @@ export async function runDeviceSync() {
                 : [proxyInfo.InputProxyChannelList.InputProxyChannel];
               channelsUsed = channels.length;
               
+              // Attempt to fetch channel statuses in bulk
+              let channelStatuses: any = null;
+              try {
+                channelStatuses = await fetchIsapi(nvr.ipAddress, nvr.username, nvr.password, "/ISAPI/ContentMgmt/InputProxy/channels/status");
+              } catch(e) {}
+              
               for (const channel of channels) {
                 const ipRaw = findDeep(channel, ["ipAddress", "IpAddress", "IPAddress", "@_ipAddress", "@_IpAddress", "@_IPAddress"]);
                 const ip = ipRaw && typeof ipRaw === "string" ? ipRaw : null;
@@ -213,10 +223,36 @@ export async function runDeviceSync() {
                    console.log(`[Sync] RAW CHANNEL JSON for missing serial:`, JSON.stringify(channel, null, 2));
                 }
 
+                // Determine online status
+                let isOnline = true;
+                
+                // 1. Check if bulk status has it
+                if (channelStatuses && channelStatuses.InputProxyChannelStatusList && channelStatuses.InputProxyChannelStatusList.InputProxyChannelStatus) {
+                  const statuses = Array.isArray(channelStatuses.InputProxyChannelStatusList.InputProxyChannelStatus) 
+                    ? channelStatuses.InputProxyChannelStatusList.InputProxyChannelStatus 
+                    : [channelStatuses.InputProxyChannelStatusList.InputProxyChannelStatus];
+                  const match = statuses.find((s: any) => String(s.id) === String(channel.id));
+                  if (match && match.online !== undefined) {
+                    isOnline = String(match.online).toLowerCase() === "true";
+                  }
+                } else {
+                  // 2. Check if embedded in channel
+                  const onlineRaw = findDeep(channel, ["online", "isOnline", "ConnectionStatus", "connectionStatus", "videoSignal", "@_online", "@_isOnline"]);
+                  if (onlineRaw !== null) {
+                    isOnline = String(onlineRaw).toLowerCase() === "true" || String(onlineRaw).toLowerCase() === "online";
+                  }
+                }
+
+                const finalStatus = isOnline ? "online" : "offline";
+
                 if (ip && typeof ip === "string") {
                   const existing = await prisma.cctvCamera.findFirst({ where: { ipAddress: ip } });
                   
-                  const updatePayload: any = { nvrId: nvr.id };
+                  const updatePayload: any = { 
+                    nvrId: nvr.id,
+                    status: finalStatus,
+                    lastPing: new Date().toISOString()
+                  };
                   if (typeof serial === "string") updatePayload.serialNumber = serial;
                   if (typeof camModel === "string") updatePayload.model = camModel;
                   if (typeof camFirmware === "string") updatePayload.firmwareVersion = camFirmware;
@@ -237,8 +273,8 @@ export async function runDeviceSync() {
                         ipAddress: ip,
                         model: typeof camModel === "string" ? camModel : "Unknown",
                         resolution: "Unknown",
-                        status: "online",
-                        recording: true,
+                        status: finalStatus,
+                        recording: isOnline,
                         storageUsedGb: 0,
                         storageTotalGb: 0,
                         lastPing: new Date().toISOString(),
