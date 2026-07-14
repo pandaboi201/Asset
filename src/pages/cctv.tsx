@@ -50,6 +50,7 @@ function CameraTile({
   camera: CctvCamera;
   onOpen: (c: CctvCamera) => void;
   index: number;
+  nvrName?: string | null;
 }) {
   const offline = camera.status === "offline";
   const storagePct = Math.round(
@@ -68,7 +69,7 @@ function CameraTile({
         {/* Faux video preview */}
         <div
           className={cn(
-            "relative flex h-36 items-center justify-center overflow-hidden bg-gradient-to-br",
+            "relative flex h-28 items-center justify-center overflow-hidden bg-gradient-to-br",
             offline
               ? "from-muted to-muted/60"
               : "from-slate-800 to-slate-950",
@@ -110,26 +111,15 @@ function CameraTile({
             </span>
           </div>
 
-          <div className="space-y-1">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <HardDrive className="h-3 w-3" /> Storage
-              </span>
-              <span>
-                {camera.storageUsedGb} / {camera.storageTotalGb} GB
-              </span>
+          <div className="space-y-1.5 pt-1 border-t">
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+              <span>MAC: {camera.macAddress || "—"}</span>
+              <span>Serial: {camera.serialNumber || "—"}</span>
             </div>
-            <Progress
-              value={storagePct}
-              className="h-1.5"
-              indicatorClassName={
-                storagePct > 85
-                  ? "bg-destructive"
-                  : storagePct > 65
-                    ? "bg-warning"
-                    : "bg-success"
-              }
-            />
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Server className="h-3 w-3" />
+              {nvrName ? `Connected to: ${nvrName}` : "Standalone / Direct"}
+            </div>
           </div>
         </div>
       </Card>
@@ -139,6 +129,12 @@ function CameraTile({
 
 export function CctvPage() {
   const { data, loading, refetch } = useAsync(() => cctvService.all(), []);
+  const nvrsQ = useAsync(() => nvrService.all(), []);
+  const nvrsMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const n of nvrsQ.data ?? []) map.set(n.id, n.name);
+    return map;
+  }, [nvrsQ.data]);
   const [search, setSearch] = useState("");
   const [zone, setZone] = useState("");
   const [status, setStatus] = useState("");
@@ -168,11 +164,6 @@ export function CctvPage() {
       online: cameras.filter((c) => c.status !== "offline").length,
       offline: cameras.filter((c) => c.status === "offline").length,
       recording: cameras.filter((c) => c.recording).length,
-      storage: Math.round(
-        (cameras.reduce((s, c) => s + c.storageUsedGb, 0) /
-          Math.max(cameras.reduce((s, c) => s + c.storageTotalGb, 0), 1)) *
-          100,
-      ),
     }),
     [cameras],
   );
@@ -209,7 +200,6 @@ export function CctvPage() {
         <MiniStat label="Online" value={stats.online} tone="success" icon={<Wifi className="h-5 w-5" />} loading={loading} />
         <MiniStat label="Offline" value={stats.offline} tone="destructive" icon={<WifiOff className="h-5 w-5" />} loading={loading} />
         <MiniStat label="Recording" value={stats.recording} tone="info" icon={<Radio className="h-5 w-5" />} loading={loading} />
-        <MiniStat label="Storage used" value={`${stats.storage}%`} tone="warning" icon={<HardDrive className="h-5 w-5" />} loading={loading} />
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -227,7 +217,7 @@ export function CctvPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <Card key={i} className="overflow-hidden">
-              <Skeleton className="h-36 w-full rounded-none" />
+              <Skeleton className="h-28 w-full rounded-none" />
               <div className="space-y-3 p-4">
                 <Skeleton className="h-4 w-2/3" />
                 <Skeleton className="h-3 w-1/2" />
@@ -245,7 +235,7 @@ export function CctvPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {filtered.map((camera, i) => (
-            <CameraTile key={camera.id} camera={camera} onOpen={openCamera} index={i} />
+            <CameraTile key={camera.id} camera={camera} onOpen={openCamera} index={i} nvrName={camera.nvrId ? nvrsMap.get(camera.nvrId) : null} />
           ))}
         </div>
       )}
@@ -276,20 +266,19 @@ export function CctvPage() {
                   title: "Network",
                   rows: [
                     { label: "IP address", value: <span className="font-mono">{detail.ipAddress}</span> },
+                    { label: "MAC address", value: <span className="font-mono">{detail.macAddress || "—"}</span> },
                     { label: "Firmware", value: detail.firmwareVersion },
                     { label: "Last ping", value: formatRelativeTime(detail.lastPing) },
                   ],
                 },
                 {
-                  title: "Location & storage",
+                  title: "Hardware & Location",
                   rows: [
                     { label: "Location", value: detail.location },
                     { label: "Zone", value: detail.zone },
                     { label: "Recording", value: detail.recording ? "Yes" : "No" },
-                    {
-                      label: "Storage",
-                      value: `${detail.storageUsedGb} / ${detail.storageTotalGb} GB`,
-                    },
+                    { label: "Connected NVR", value: detail.nvrId ? (nvrsMap.get(detail.nvrId) || detail.nvrId) : "Standalone" },
+                    { label: "Serial Number", value: detail.serialNumber || "—" },
                     { label: "Installed", value: formatDate(detail.installedDate) },
                   ],
                 },
