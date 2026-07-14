@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useAsync } from "@/hooks/use-async";
 
 import type { Nvr } from "@/types";
 import { nvrService, nvrHistoryService } from "@/services";
@@ -13,6 +14,7 @@ const schema = z.object({
   action: z.enum(["Moved", "Uninstalled", "Replaced", "Installed", "Sent to Inventory"]),
   newStatus: z.enum(["installed", "inventory", "decommissioned"]),
   newLocation: z.string().optional(),
+  replacementDeviceId: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -42,9 +44,15 @@ export function NvrMoveDialog({
       action: "Moved",
       newStatus: "installed",
       newLocation: "",
+      replacementDeviceId: "",
       notes: "",
     },
   });
+
+  const inventoryQ = useAsync(async () => {
+    const all = await nvrService.all();
+    return all.filter(n => n.installationStatus === "inventory");
+  }, []);
 
   const selectedStatus = watch("newStatus");
 
@@ -65,6 +73,20 @@ export function NvrMoveDialog({
       const isInventory = values.newStatus === "inventory";
       const finalLocation = isInventory ? "Inventory" : (values.newLocation || nvr.location);
       
+      let historyNotes = values.notes || "";
+      if (values.action === "Replaced" && values.replacementDeviceId) {
+        const replacement = inventoryQ.data?.find(n => n.id === values.replacementDeviceId);
+        if (replacement) {
+          historyNotes = `Replaced by ${replacement.name} (SN: ${replacement.serialNumber || 'N/A'}). ${historyNotes}`.trim();
+          
+          await nvrService.update(replacement.id, {
+            installationStatus: "installed",
+            location: finalLocation,
+            status: "online"
+          });
+        }
+      }
+
       // 1. Log History
       await nvrHistoryService.create({
         id: `nvrhist-${Date.now()}`,
@@ -73,11 +95,11 @@ export function NvrMoveDialog({
         action: values.action,
         fromLocation: nvr.location,
         toLocation: finalLocation,
-        notes: values.notes || "",
+        notes: historyNotes,
         date: new Date().toISOString(),
       });
 
-      // 2. Update NVR
+      // 2. Update Old NVR
       await nvrService.update(nvr.id, {
         installationStatus: values.newStatus,
         location: finalLocation,
@@ -136,6 +158,17 @@ export function NvrMoveDialog({
       {selectedStatus === "installed" && (
         <FormField label="New Location" error={errors.newLocation?.message}>
           <Input placeholder="e.g. Server Room A" {...register("newLocation")} />
+        </FormField>
+      )}
+
+      {watch("action") === "Replaced" && (
+        <FormField label="Replacement NVR" error={errors.replacementDeviceId?.message}>
+          <FormSelect
+            control={control}
+            name="replacementDeviceId"
+            placeholder="Select an NVR from inventory"
+            options={inventoryQ.data?.map(n => ({ label: `${n.name} (${n.model || 'Unknown'})`, value: n.id })) || []}
+          />
         </FormField>
       )}
 

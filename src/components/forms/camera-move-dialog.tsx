@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useAsync } from "@/hooks/use-async";
 
 import type { CctvCamera } from "@/types";
 import { cctvService, cameraHistoryService } from "@/services";
@@ -13,6 +14,7 @@ const schema = z.object({
   action: z.enum(["Moved", "Uninstalled", "Replaced", "Installed", "Sent to Inventory"]),
   newStatus: z.enum(["installed", "inventory", "decommissioned"]),
   newLocation: z.string().optional(),
+  replacementDeviceId: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -43,9 +45,15 @@ export function CameraMoveDialog({
       action: "Moved",
       newStatus: "installed",
       newLocation: "",
+      replacementDeviceId: "",
       notes: "",
     },
   });
+
+  const inventoryQ = useAsync(async () => {
+    const all = await cctvService.all();
+    return all.filter(c => c.installationStatus === "inventory");
+  }, []);
 
   const selectedStatus = watch("newStatus");
 
@@ -66,6 +74,22 @@ export function CameraMoveDialog({
       const isInventory = values.newStatus === "inventory";
       const finalLocation = isInventory ? "Inventory" : (values.newLocation || camera.location);
       
+      let historyNotes = values.notes || "";
+      if (values.action === "Replaced" && values.replacementDeviceId) {
+        const replacement = inventoryQ.data?.find(c => c.id === values.replacementDeviceId);
+        if (replacement) {
+          historyNotes = `Replaced by ${replacement.name} (SN: ${replacement.serialNumber || 'N/A'}). ${historyNotes}`.trim();
+          
+          await cctvService.update(replacement.id, {
+            installationStatus: "installed",
+            location: finalLocation,
+            zone: camera.zone,
+            status: "online",
+            nvrId: camera.nvrId
+          });
+        }
+      }
+
       // 1. Log History
       await cameraHistoryService.create({
         id: `hist-${Date.now()}`,
@@ -74,16 +98,17 @@ export function CameraMoveDialog({
         action: values.action,
         fromLocation: camera.location,
         toLocation: finalLocation,
-        notes: values.notes || "",
+        notes: historyNotes,
         date: new Date().toISOString(),
       });
 
-      // 2. Update Camera
+      // 2. Update Old Camera
       await cctvService.update(camera.id, {
         installationStatus: values.newStatus,
         location: finalLocation,
         zone: isInventory ? "Unassigned" : camera.zone,
         status: isInventory ? "offline" : camera.status,
+        nvrId: null
       });
 
       toast.success("Camera updated and history logged");
@@ -138,6 +163,17 @@ export function CameraMoveDialog({
       {selectedStatus === "installed" && (
         <FormField label="New Location" error={errors.newLocation?.message}>
           <Input placeholder="e.g. 1st Floor Lobby" {...register("newLocation")} />
+        </FormField>
+      )}
+
+      {watch("action") === "Replaced" && (
+        <FormField label="Replacement Camera" error={errors.replacementDeviceId?.message}>
+          <FormSelect
+            control={control}
+            name="replacementDeviceId"
+            placeholder="Select a camera from inventory"
+            options={inventoryQ.data?.map(c => ({ label: `${c.name} (${c.model || 'Unknown'})`, value: c.id })) || []}
+          />
         </FormField>
       )}
 
