@@ -81,8 +81,8 @@ export async function getAssetHistory(assetTag: string): Promise<AssetHistory> {
     timeline.push({
       id: `t-iss-${it.id}`,
       kind: "issue",
-      title: `Issued to ${it.issuedToName || "Unknown"}`,
-      description: `${it.issuedToDept || ""} · due ${new Date(it.dueDate).toLocaleDateString()}`,
+      title: `Issued to ${it.issuedTo?.name || "Unknown"}`,
+      description: `${it.issuedTo?.department || ""} · due ${new Date(it.dueDate).toLocaleDateString()}`,
       actor: it.issuedBy,
       status: it.status,
       reference: it.reference,
@@ -92,7 +92,7 @@ export async function getAssetHistory(assetTag: string): Promise<AssetHistory> {
       timeline.push({
         id: `t-ret-${it.id}`,
         kind: "return",
-        title: `Returned by ${it.issuedToName || "Unknown"}`,
+        title: `Returned by ${it.issuedTo?.name || "Unknown"}`,
         description: `Condition on return: ${it.condition}`,
         reference: it.reference,
         date: it.returnDate,

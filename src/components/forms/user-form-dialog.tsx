@@ -19,6 +19,7 @@ const schema = z.object({
   department: z.string().min(1, "Select a department"),
   location: z.string().min(1, "Select a location"),
   phone: z.string().optional(),
+  status: z.string().optional(),
 });
 
 type Values = z.infer<typeof schema>;
@@ -27,10 +28,12 @@ export function UserFormDialog({
   open,
   onOpenChange,
   onCreated,
+  user,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated?: () => void;
+  user?: User | null;
 }) {
   const {
     register,
@@ -47,30 +50,66 @@ export function UserFormDialog({
       department: "",
       location: "",
       phone: "",
+      status: "active",
     },
   });
 
   useEffect(() => {
-    if (open) reset();
-  }, [open, reset]);
+    if (open) {
+      if (user) {
+        reset({
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          department: user.department,
+          location: user.location,
+          phone: user.phone || "",
+          status: user.status,
+        });
+      } else {
+        reset({
+          name: "",
+          email: "",
+          role: "viewer",
+          department: "",
+          location: "",
+          phone: "",
+          status: "active",
+        });
+      }
+    }
+  }, [open, user, reset]);
 
   const submit = handleSubmit(async (values) => {
     const now = new Date().toISOString();
-    await userService.create({
-      id: `usr-${Date.now()}`,
-      name: values.name,
-      email: values.email,
-      avatarUrl: undefined,
-      role: values.role as UserRole,
-      department: values.department,
-      jobTitle: "-",
-      phone: values.phone?.trim() || undefined,
-      location: values.location,
-      status: "active",
-      lastActiveAt: now,
-      createdAt: now,
-    } as User);
-    toast.success(`User added: ${values.name}`);
+    if (user) {
+      await userService.update(user.id, {
+        name: values.name,
+        email: values.email,
+        role: values.role as UserRole,
+        department: values.department,
+        phone: values.phone?.trim() || undefined,
+        location: values.location,
+        status: values.status as any,
+      });
+      toast.success(`User updated: ${values.name}`);
+    } else {
+      await userService.create({
+        id: `usr-${Date.now()}`,
+        name: values.name,
+        email: values.email,
+        avatarUrl: undefined,
+        role: values.role as UserRole,
+        department: values.department,
+        jobTitle: "-",
+        phone: values.phone?.trim() || undefined,
+        location: values.location,
+        status: values.status || "active",
+        lastActiveAt: now,
+        createdAt: now,
+      } as User);
+      toast.success(`User added: ${values.name}`);
+    }
     onCreated?.();
     onOpenChange(false);
   });
@@ -79,11 +118,11 @@ export function UserFormDialog({
     <FormDialogShell
       open={open}
       onOpenChange={onOpenChange}
-      title="Add User"
-      description="Add a team member to the system."
+      title={user ? "Edit User" : "Add User"}
+      description={user ? "Update team member details." : "Add a team member to the system."}
       formId="user-form"
       onSubmit={submit}
-      submitLabel="Add user"
+      submitLabel={user ? "Save changes" : "Add user"}
       submitting={isSubmitting}
     >
       <FormField label="Full name" required error={errors.name?.message}>
@@ -117,9 +156,23 @@ export function UserFormDialog({
           options={LOCATION_OPTIONS.map((l) => ({ label: l, value: l }))}
         />
       </FormField>
-      <FormField label="Phone" full error={errors.phone?.message}>
+      <FormField label="Phone" error={errors.phone?.message}>
         <Input placeholder="+1 (415) 555-0100" {...register("phone")} />
       </FormField>
+      {user && (
+        <FormField label="Status" required error={errors.status?.message}>
+          <FormSelect
+            control={control}
+            name="status"
+            placeholder="Select status"
+            options={[
+              { label: "Active", value: "active" },
+              { label: "Inactive", value: "inactive" },
+              { label: "Invited", value: "invited" },
+            ]}
+          />
+        </FormField>
+      )}
     </FormDialogShell>
   );
 }

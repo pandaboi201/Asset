@@ -1,7 +1,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { Copy, Eye, MoreHorizontal, Pencil, Trash2, ArrowRightCircle } from "lucide-react";
+import { Copy, Eye, MoreHorizontal, Pencil, Trash2, ArrowRightCircle, ArrowLeftCircle } from "lucide-react";
 
-import type { Asset } from "@/types";
+import type { Asset, DeviceIssue } from "@/types";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,6 +23,8 @@ interface ColumnHandlers {
   onEdit: (asset: Asset) => void;
   onDelete: (asset: Asset) => void;
   onIssue: (asset: Asset) => void;
+  onReturn: (asset: Asset) => void;
+  issues: DeviceIssue[];
 }
 
 export function createAssetColumns({
@@ -30,6 +32,8 @@ export function createAssetColumns({
   onEdit,
   onDelete,
   onIssue,
+  onReturn,
+  issues,
 }: ColumnHandlers): ColumnDef<Asset>[] {
   return [
     {
@@ -108,7 +112,7 @@ export function createAssetColumns({
       id: "assignedTo",
       accessorFn: (row) => row.assignedTo?.name ?? "",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Assigned To" />
+        <DataTableColumnHeader column={column} title="Current User" />
       ),
       cell: ({ row }) => {
         const assignee = row.original.assignedTo;
@@ -125,7 +129,35 @@ export function createAssetColumns({
           </div>
         );
       },
-      meta: { label: "Assigned To" },
+      meta: { label: "Current User" },
+    },
+    {
+      id: "previousUser",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Previous User" />
+      ),
+      cell: ({ row }) => {
+        // Find the most recently returned issue for this asset
+        const returnedIssues = issues.filter(
+          (i) => i.assetTag === row.original.assetTag && i.status === "returned" && i.returnDate
+        );
+        if (returnedIssues.length === 0) {
+          return <span className="text-sm text-muted-foreground">—</span>;
+        }
+        returnedIssues.sort((a, b) => new Date(b.returnDate!).getTime() - new Date(a.returnDate!).getTime());
+        const previous = returnedIssues[0];
+        return (
+          <div className="flex items-center gap-2">
+            <Avatar className="h-7 w-7 opacity-70">
+              <AvatarFallback className="text-[10px]">
+                {getInitials(previous.issuedTo.name)}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-sm text-muted-foreground">{previous.issuedTo.name}</span>
+          </div>
+        );
+      },
+      meta: { label: "Previous User" },
     },
     {
       accessorKey: "location",
@@ -191,6 +223,11 @@ export function createAssetColumns({
                 {asset.status === "available" && (
                   <DropdownMenuItem onClick={() => onIssue(asset)}>
                     <ArrowRightCircle /> Quick issue
+                  </DropdownMenuItem>
+                )}
+                {asset.status === "in-use" && (
+                  <DropdownMenuItem onClick={() => onReturn(asset)}>
+                    <ArrowLeftCircle /> Quick Return
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem

@@ -11,7 +11,7 @@ import { DataTable } from "@/components/shared/data-table";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { useAsync } from "@/hooks/use-async";
-import { assetService } from "@/services";
+import { assetService, issueService } from "@/services";
 import {
   ASSET_CATEGORY_OPTIONS,
   ASSET_STATUS_OPTIONS,
@@ -25,6 +25,7 @@ import { CsvUpload } from "@/components/shared/csv-upload";
 export function AssetsPage() {
   const navigate = useNavigate();
   const { data, loading, refetch } = useAsync(() => assetService.all(), []);
+  const issuesQ = useAsync(() => issueService.all(), []);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [category, setCategory] = useState("");
@@ -73,6 +74,22 @@ export function AssetsPage() {
     setFormOpen(true);
   };
 
+  const handleReturn = async (asset: Asset) => {
+    const issues = issuesQ.data ?? [];
+    const activeIssue = issues.find(i => i.assetTag === asset.assetTag && i.status !== "returned");
+    if (activeIssue) {
+      await issueService.update(activeIssue.id, {
+        status: "returned",
+        returnDate: new Date().toISOString(),
+      });
+      toast.success(`${asset.assetTag} marked as returned`);
+      refetch();
+      issuesQ.refetch();
+    } else {
+      toast.error("Could not find active issue for this asset");
+    }
+  };
+
   const columns = useMemo(
     () =>
       createAssetColumns({
@@ -80,8 +97,10 @@ export function AssetsPage() {
         onEdit: openEdit,
         onDelete: (a) => setToDelete(a),
         onIssue: (a) => setIssueAsset(a),
+        onReturn: handleReturn,
+        issues: issuesQ.data ?? [],
       }),
-    [],
+    [issuesQ.data],
   );
 
   const handleSubmit = async (values: AssetFormValues) => {

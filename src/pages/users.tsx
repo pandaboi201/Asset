@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAsync } from "@/hooks/use-async";
-import { assetService, userService } from "@/services";
+import { assetService, userService, issueService } from "@/services";
 import { DEPARTMENT_OPTIONS } from "@/config/constants";
 import { formatDate, formatRelativeTime, getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
@@ -52,6 +52,7 @@ const ROLE_TONE: Record<string, string> = {
 export function UsersPage() {
   const { data, loading, refetch } = useAsync(() => userService.all(), []);
   const assetsQ = useAsync(() => assetService.all(), []);
+  const issuesQ = useAsync(() => issueService.all(), []);
   const [search, setSearch] = useState("");
   const [role, setRole] = useState("");
   const [department, setDepartment] = useState("");
@@ -75,6 +76,12 @@ export function UsersPage() {
   }, [assetsQ.data]);
 
   const detailDevices = detail ? (devicesByUser.get(detail.id) ?? []) : [];
+  
+  const detailHistory = useMemo(() => {
+    if (!detail || !issuesQ.data) return [];
+    const issues = issuesQ.data.filter(i => i.issuedTo.id === detail.id);
+    return issues.sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
+  }, [detail, issuesQ.data]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -203,7 +210,12 @@ export function UsersPage() {
                 >
                   View profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toast.info("Edit user (demo)")}>
+                <DropdownMenuItem 
+                  onClick={() => {
+                    setDetail(row.original);
+                    setFormOpen(true);
+                  }}
+                >
                   Edit user
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => toast.success("Invite resent (demo)")}>
@@ -226,7 +238,7 @@ export function UsersPage() {
         description="Manage team members, roles and access permissions."
         icon={<UsersIcon className="h-5 w-5" />}
       >
-        <Button onClick={() => setFormOpen(true)}>
+        <Button onClick={() => { setDetail(null); setFormOpen(true); }}>
           <UserPlus className="h-4 w-4" /> Add User
         </Button>
       </PageHeader>
@@ -262,7 +274,12 @@ export function UsersPage() {
         }
       />
 
-      <UserFormDialog open={formOpen} onOpenChange={setFormOpen} onCreated={refetch} />
+      <UserFormDialog 
+        open={formOpen} 
+        onOpenChange={setFormOpen} 
+        onCreated={refetch} 
+        user={detail} 
+      />
 
       <DetailSheet
         open={open}
@@ -336,6 +353,36 @@ export function UsersPage() {
                         },
                       ],
                 },
+                {
+                  title: `Device History (${detailHistory.length})`,
+                  rows: detailHistory.length
+                    ? detailHistory.map((h) => ({
+                        label: (
+                          <span className="font-mono text-xs text-muted-foreground">
+                            {h.assetTag}
+                          </span>
+                        ),
+                        value: (
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="text-sm font-medium">{h.assetName}</span>
+                            <span className="text-xs text-muted-foreground flex gap-2">
+                              <span>Issued: {formatDate(h.issueDate)}</span>
+                              {h.returnDate ? <span>Ret: {formatDate(h.returnDate)}</span> : <StatusBadge status={h.status} />}
+                            </span>
+                          </div>
+                        ),
+                      }))
+                    : [
+                        {
+                          label: "—",
+                          value: (
+                            <span className="text-muted-foreground">
+                              No device history
+                            </span>
+                          ),
+                        },
+                      ],
+                },
               ]
             : []
         }
@@ -345,7 +392,7 @@ export function UsersPage() {
               <Button variant="outline" onClick={() => setOpen(false)}>
                 Close
               </Button>
-              <Button onClick={() => toast.info("Edit user (demo)")}>Edit user</Button>
+              <Button onClick={() => { setOpen(false); setFormOpen(true); }}>Edit user</Button>
             </>
           )
         }

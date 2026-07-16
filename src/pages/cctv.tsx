@@ -124,6 +124,7 @@ export function CctvPage() {
   const [nvrMoveOpen, setNvrMoveOpen] = useState(false);
   const [editingCamera, setEditingCamera] = useState<CctvCamera | null>(null);
   const [installStatus, setInstallStatus] = useState("installed");
+  const [activeTab, setActiveTab] = useState("cameras");
 
   const historyQ = useAsync(() => cameraHistoryService.all(), [open]);
 
@@ -166,12 +167,18 @@ export function CctvPage() {
         description="Monitor the camera fleet, recording status and storage health."
         icon={<Camera className="h-5 w-5" />}
       >
-        <Button onClick={() => { setEditingCamera(null); setCameraFormOpen(true); }}>
-          <Plus className="h-4 w-4" /> Add Camera
-        </Button>
+        {activeTab === "cameras" ? (
+          <Button onClick={() => { setEditingCamera(null); setCameraFormOpen(true); }}>
+            <Plus className="h-4 w-4" /> Add Camera
+          </Button>
+        ) : (
+          <Button onClick={() => { setEditingNvr(null); setNvrFormOpen(true); }}>
+            <Plus className="h-4 w-4" /> Add Recorder
+          </Button>
+        )}
       </PageHeader>
 
-      <Tabs defaultValue="cameras" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="cameras">
             <Camera className="h-4 w-4" /> Cameras
@@ -508,9 +515,6 @@ function NvrPanel() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">Network Video Recorders</h3>
-        <Button onClick={() => { setEditingNvr(null); setNvrFormOpen(true); }}>
-          <Plus className="h-4 w-4" /> Add Recorder
-        </Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -533,11 +537,6 @@ function NvrPanel() {
             onClick={() => setInstallStatus("inventory")}
           >
             Inventory / Spares
-          </Button>
-        </div>
-        <div className="pb-4">
-          <Button onClick={() => { setEditingNvr(null); setNvrFormOpen(true); }}>
-            <Plus className="h-4 w-4" /> Add Recorder
           </Button>
         </div>
       </div>
