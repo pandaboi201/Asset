@@ -78,9 +78,9 @@ export function SettingsPage() {
   useEffect(() => {
     if (settingsData) {
       setLists({
-        category_options: (settingsData.category_options?.length ? settingsData.category_options : ASSET_CATEGORY_OPTIONS).join(", "),
-        location_options: (settingsData.location_options?.length ? settingsData.location_options : ASSET_LOCATION_OPTIONS).join(", "),
-        department_options: (settingsData.department_options?.length ? settingsData.department_options : ASSET_DEPARTMENT_OPTIONS).join(", "),
+        category_options: Array.from(new Set([...(settingsData.category_options || []), ...ASSET_CATEGORY_OPTIONS])).join(", "),
+        location_options: Array.from(new Set([...(settingsData.location_options || []), ...ASSET_LOCATION_OPTIONS])).join(", "),
+        department_options: Array.from(new Set([...(settingsData.department_options || []), ...ASSET_DEPARTMENT_OPTIONS])).join(", "),
         manufacturer_options: (settingsData.manufacturer_options || []).join(", "),
         model_options: (settingsData.model_options || []).join(", "),
       });
