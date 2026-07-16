@@ -16,7 +16,7 @@ const CONDITIONS = ["new", "good", "fair", "poor"];
 const schema = z.object({
   assetId: z.string().min(1, "Select a device"),
   userId: z.string().min(1, "Select a recipient"),
-  dueDate: z.string().min(1, "Select a due date"),
+  issueDate: z.string().min(1, "Select an issue date"),
   condition: z.string().min(1, "Select the condition"),
   notes: z.string().optional(),
 });
@@ -64,7 +64,7 @@ export function IssueFormDialog({
     formState: { errors, isSubmitting },
   } = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { assetId: "", userId: "", dueDate: "", condition: "good", notes: "" },
+    defaultValues: { assetId: "", userId: "", issueDate: new Date().toISOString().split("T")[0], condition: "good", notes: "" },
   });
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export function IssueFormDialog({
       reset({
         assetId: defaultAssetId || "",
         userId: defaultUserId || "",
-        dueDate: "",
+        issueDate: new Date().toISOString().split("T")[0],
         condition: "good",
         notes: defaultNotes || "",
       });
@@ -97,8 +97,8 @@ export function IssueFormDialog({
         department: user.department,
       },
       issuedBy: "IT Service Desk",
-      issueDate: new Date().toISOString(),
-      dueDate: new Date(values.dueDate).toISOString(),
+      issueDate: new Date(values.issueDate).toISOString(),
+      dueDate: null,
       returnDate: null,
       status: "issued",
       condition: values.condition as AssetCondition,
@@ -130,15 +130,15 @@ export function IssueFormDialog({
         />
       </FormField>
       <FormField label="Issue to" required error={errors.userId?.message}>
-        <FormSelect
+        <FormCombobox
           control={control}
           name="userId"
-          placeholder="Select a person"
+          placeholder="Search and select a person..."
           options={userOptions}
         />
       </FormField>
-      <FormField label="Due date" required error={errors.dueDate?.message}>
-        <Input type="date" {...register("dueDate")} />
+      <FormField label="Issue date" required error={errors.issueDate?.message}>
+        <Input type="date" {...register("issueDate")} />
       </FormField>
       <FormField label="Condition" required error={errors.condition?.message}>
         <FormSelect
