@@ -27,7 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAsync } from "@/hooks/use-async";
-import { issueService } from "@/services";
+import { issueService, assetService } from "@/services";
 import { formatDate, getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 import { IssueFormDialog } from "@/components/forms/issue-form-dialog";
@@ -41,6 +41,7 @@ const STATUS_OPTIONS = [
 
 export function IssuesPage() {
   const { data, loading, refetch } = useAsync(() => issueService.all(), []);
+  const assetsQ = useAsync(() => assetService.all(), []);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [detail, setDetail] = useState<DeviceIssue | null>(null);
@@ -106,6 +107,24 @@ export function IssuesPage() {
         meta: { label: "Device" },
       },
       {
+        id: "brand",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Brand" />,
+        cell: ({ row }) => {
+          const asset = assetsQ.data?.find(a => a.assetTag === row.original.assetTag);
+          return <span className="text-sm">{asset?.manufacturer || "-"}</span>;
+        },
+        meta: { label: "Brand" },
+      },
+      {
+        id: "model",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Model" />,
+        cell: ({ row }) => {
+          const asset = assetsQ.data?.find(a => a.assetTag === row.original.assetTag);
+          return <span className="text-sm">{asset?.model || "-"}</span>;
+        },
+        meta: { label: "Model" },
+      },
+      {
         id: "issuedTo",
         accessorFn: (row) => row.issuedTo.name,
         header: ({ column }) => <DataTableColumnHeader column={column} title="Issued to" />,
@@ -137,17 +156,14 @@ export function IssuesPage() {
         meta: { label: "Issued" },
       },
       {
-        accessorKey: "dueDate",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Due" />,
-        cell: ({ row }) => {
-          const overdue = row.original.status === "overdue";
-          return (
-            <span className={overdue ? "text-sm font-medium text-destructive" : "text-sm text-muted-foreground"}>
-              {formatDate(row.original.dueDate)}
-            </span>
-          );
-        },
-        meta: { label: "Due" },
+        accessorKey: "returnDate",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Return Date" />,
+        cell: ({ row }) => (
+          <span className="text-sm text-muted-foreground">
+            {row.original.returnDate ? formatDate(row.original.returnDate) : "-"}
+          </span>
+        ),
+        meta: { label: "Return Date" },
       },
       {
         accessorKey: "status",
