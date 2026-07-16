@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -171,9 +171,9 @@ model Nvr {
   installedDate          String
   username               String?
   password               String?
-  connectedCameraIds     String
-  alerts                 String?
-  supportedEvents        String?
+  connectedCameraIds     String  @db.Text
+  alerts                 String? @db.Text
+  supportedEvents        String? @db.Text
   installationStatus     String  @default("installed") // "installed", "inventory", "decommissioned"
   inventoryLocation      String?
 }
