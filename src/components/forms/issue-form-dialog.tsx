@@ -98,7 +98,7 @@ export function IssueFormDialog({
       },
       issuedBy: "IT Service Desk",
       issueDate: new Date(values.issueDate).toISOString(),
-      dueDate: null,
+      dueDate: "",
       returnDate: null,
       status: "issued",
       condition: values.condition as AssetCondition,
