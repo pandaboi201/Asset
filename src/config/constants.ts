@@ -21,8 +21,7 @@ export const DEPARTMENT_OPTIONS = [
 ];
 
 export const LOCATION_OPTIONS = [
-  "New York HQ", "San Francisco", "London", "Singapore", "Berlin",
-  "Toronto", "Austin", "Remote",
+  "Main Office"
 ];
 
 export const ASSET_CATEGORY_OPTIONS: AssetCategory[] = [
