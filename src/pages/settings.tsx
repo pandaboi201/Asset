@@ -331,6 +331,23 @@ export function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              <div className="flex justify-end mb-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    setLists({
+                      category_options: ASSET_CATEGORY_OPTIONS.join(", "),
+                      location_options: ASSET_LOCATION_OPTIONS.join(", "),
+                      department_options: ASSET_DEPARTMENT_OPTIONS.join(", "),
+                      manufacturer_options: "",
+                      model_options: "",
+                    });
+                  }}
+                >
+                  Reset to Code Defaults
+                </Button>
+              </div>
               <div className="space-y-1.5">
                 <Label>Categories</Label>
                 <Textarea 
