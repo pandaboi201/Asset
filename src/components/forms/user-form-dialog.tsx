@@ -4,8 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import type { User, UserRole } from "@/types";
-import { userService } from "@/services";
-import { DEPARTMENT_OPTIONS, LOCATION_OPTIONS } from "@/config/constants";
+import { userService, settingsService } from "@/services";
+import { LOCATION_OPTIONS, DEPARTMENT_OPTIONS } from "@/config/constants";
+import { useAsync } from "@/hooks/use-async";
 import { toast } from "@/components/ui/sonner";
 import { Input } from "@/components/ui/input";
 import { FormDialogShell, FormField, FormSelect } from "@/components/shared/form";
@@ -53,6 +54,10 @@ export function UserFormDialog({
       status: "active",
     },
   });
+
+  const { data: settings } = useAsync(() => settingsService.getAll(), []);
+  const departmentOptions = settings?.department_options?.length ? settings?.department_options : DEPARTMENT_OPTIONS;
+  const locationOptions = settings?.location_options?.length ? settings?.location_options : LOCATION_OPTIONS;
 
   useEffect(() => {
     if (open) {
@@ -145,7 +150,7 @@ export function UserFormDialog({
           control={control}
           name="department"
           placeholder="Select department"
-          options={DEPARTMENT_OPTIONS.map((d) => ({ label: d, value: d }))}
+          options={departmentOptions.map((d) => ({ label: d, value: d }))}
         />
       </FormField>
       <FormField label="Location" required error={errors.location?.message}>
@@ -153,7 +158,7 @@ export function UserFormDialog({
           control={control}
           name="location"
           placeholder="Select location"
-          options={LOCATION_OPTIONS.map((l) => ({ label: l, value: l }))}
+          options={locationOptions.map((l) => ({ label: l, value: l }))}
         />
       </FormField>
       <FormField label="Phone" error={errors.phone?.message}>

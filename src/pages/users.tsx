@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAsync } from "@/hooks/use-async";
-import { assetService, userService, issueService } from "@/services";
+import { assetService, userService, issueService, settingsService } from "@/services";
 import { DEPARTMENT_OPTIONS } from "@/config/constants";
 import { formatDate, formatRelativeTime, getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
@@ -53,6 +53,8 @@ export function UsersPage() {
   const { data, loading, refetch } = useAsync(() => userService.all(), []);
   const assetsQ = useAsync(() => assetService.all(), []);
   const issuesQ = useAsync(() => issueService.all(), []);
+  const settingsQ = useAsync(() => settingsService.getAll(), []);
+  
   const [search, setSearch] = useState("");
   const [role, setRole] = useState("");
   const [department, setDepartment] = useState("");
@@ -269,7 +271,12 @@ export function UsersPage() {
               className="w-full sm:w-72"
             />
             <FilterSelect value={role} onChange={setRole} options={ROLE_OPTIONS} allLabel="All roles" />
-            <FilterSelect value={department} onChange={setDepartment} options={[...DEPARTMENT_OPTIONS]} allLabel="All departments" />
+            <FilterSelect 
+              value={department} 
+              onChange={setDepartment} 
+              options={settingsQ.data?.department_options?.length ? settingsQ.data.department_options : [...DEPARTMENT_OPTIONS]} 
+              allLabel="All departments" 
+            />
           </>
         }
       />
