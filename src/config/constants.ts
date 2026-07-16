@@ -17,6 +17,9 @@ export const currentUser: User = {
 export const DEPARTMENT_OPTIONS = [
   "IT Operations", "Engineering", "Finance", "Human Resources", "Sales",
   "Marketing", "Security", "Facilities", "Support", "Legal",
+  "IT Division", "SLO Division", "Finance Division", "Marketing Division",
+  "Registrar's Office", "Software Division", "Computer Science Department",
+  "Management Department", "Psychology Department", "President's Office"
 ];
 
 export const LOCATION_OPTIONS = [
