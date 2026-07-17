@@ -166,6 +166,12 @@ export function crudRouter(prisma: PrismaClient, modelName: string) {
               throw new Error(`Asset ${mappedData.assetTag} is already issued or unavailable.`);
             }
           }
+          if (modelName === "asset" && mappedData.serialNumber) {
+            const existing = await prisma.asset.findFirst({ where: { serialNumber: mappedData.serialNumber } });
+            if (existing) {
+              throw new Error(`Asset with serial number ${mappedData.serialNumber} already exists.`);
+            }
+          }
 
           const item = await delegate.create({ data: mappedData });
 
@@ -205,6 +211,14 @@ export function crudRouter(prisma: PrismaClient, modelName: string) {
         const asset = await prisma.asset.findFirst({ where: { assetTag: mappedData.assetTag } });
         if (!asset || (asset.status !== "available" && asset.status !== "in-use")) {
           return res.status(400).json({ error: "Asset is already issued or unavailable." });
+        }
+      }
+      
+      // Before-create validation for Asset
+      if (modelName === "asset" && mappedData.serialNumber) {
+        const existing = await prisma.asset.findFirst({ where: { serialNumber: mappedData.serialNumber } });
+        if (existing) {
+          return res.status(400).json({ error: "An asset with this serial number already exists." });
         }
       }
 

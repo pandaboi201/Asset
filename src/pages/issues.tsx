@@ -107,6 +107,15 @@ export function IssuesPage() {
         meta: { label: "Device" },
       },
       {
+        id: "serialNumber",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Serial Number" />,
+        cell: ({ row }) => {
+          const asset = assetsQ.data?.find(a => a.assetTag === row.original.assetTag);
+          return <span className="font-mono text-xs">{asset?.serialNumber || "-"}</span>;
+        },
+        meta: { label: "Serial Number" },
+      },
+      {
         id: "brand",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Brand" />,
         cell: ({ row }) => {
@@ -205,7 +214,7 @@ export function IssuesPage() {
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [assetsQ.data],
   );
 
   return (

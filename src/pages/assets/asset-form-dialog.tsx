@@ -45,6 +45,8 @@ const assetSchema = z.object({
   location: z.string().min(1, "Select a location"),
   department: z.string().min(1, "Select a department"),
   supplier: z.string().min(1, "Supplier is required"),
+  purchaseDate: z.string().optional(),
+  warranty: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -109,6 +111,8 @@ export function AssetFormDialog({
       location: "",
       department: "",
       supplier: "",
+      purchaseDate: "",
+      warranty: "",
       notes: "",
     },
   });
@@ -135,6 +139,8 @@ export function AssetFormDialog({
           location: asset.location,
           department: asset.department,
           supplier: asset.supplier,
+          purchaseDate: asset.purchaseDate ?? "",
+          warranty: asset.warranty ?? "",
           notes: asset.notes ?? "",
         });
       } else {
@@ -152,6 +158,8 @@ export function AssetFormDialog({
           location: "",
           department: "",
           supplier: "",
+          purchaseDate: "",
+          warranty: "",
           notes: "",
         });
       }
@@ -341,11 +349,17 @@ export function AssetFormDialog({
 
             <div className="sm:col-span-2">
               <Field label="Supplier" required error={errors.supplier?.message}>
-                <Input placeholder="CDW" {...register("supplier")} />
+                <Input placeholder="e.g. CDW or Local Vendor" {...register("supplier")} />
               </Field>
             </div>
+            <Field label="Purchase Date" error={errors.purchaseDate?.message}>
+              <Input type="date" {...register("purchaseDate")} />
+            </Field>
+            <Field label="Warranty Expiration" error={errors.warranty?.message}>
+              <Input type="date" {...register("warranty")} />
+            </Field>
             <div className="sm:col-span-2">
-              <Field label="Notes" error={errors.notes?.message}>
+              <Field label="Notes & Extras (e.g., Charger S/N)" error={errors.notes?.message}>
                 <Textarea rows={3} placeholder="Optional notes..." {...register("notes")} />
               </Field>
             </div>
