@@ -81,7 +81,7 @@ async function main() {
     ].join(','));
   }
 
-  fs.writeFileSync('D:/Asset/resourses/Laptops_Bulk_Import_Strict.csv', csvRows.join('\n'));
+  fs.writeFileSync('D:/Asset/resourses/Laptops_Bulk_Import_Final.csv', csvRows.join('\n'));
   console.log('Generated ' + (devices.size - skippedCount) + ' unique laptops.');
   console.log('Skipped ' + skippedCount + ' laptops due to unrecognised Brand or Model.');
   
