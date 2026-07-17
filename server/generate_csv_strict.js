@@ -41,7 +41,7 @@ async function main() {
   }
 
   const csvRows = [
-    'name,assetTag,category,manufacturer,model,serialNumber,status,condition,location,department,supplier,purchaseDate,warranty,notes'
+    'name,assetTag,category,manufacturer,model,serialNumber,status,condition,location,department,supplier,purchaseDate,warrantyExpiry,notes'
   ];
 
   for (const [sn, info] of devices.entries()) {

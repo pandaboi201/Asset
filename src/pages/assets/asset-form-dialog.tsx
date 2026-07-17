@@ -46,7 +46,7 @@ const assetSchema = z.object({
   department: z.string().min(1, "Select a department"),
   supplier: z.string().min(1, "Supplier is required"),
   purchaseDate: z.string().optional(),
-  warranty: z.string().optional(),
+  warrantyExpiry: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -112,7 +112,7 @@ export function AssetFormDialog({
       department: "",
       supplier: "",
       purchaseDate: "",
-      warranty: "",
+      warrantyExpiry: "",
       notes: "",
     },
   });
@@ -140,7 +140,7 @@ export function AssetFormDialog({
           department: asset.department,
           supplier: asset.supplier,
           purchaseDate: asset.purchaseDate ?? "",
-          warranty: asset.warranty ?? "",
+          warrantyExpiry: asset.warrantyExpiry ?? "",
           notes: asset.notes ?? "",
         });
       } else {
@@ -159,7 +159,7 @@ export function AssetFormDialog({
           department: "",
           supplier: "",
           purchaseDate: "",
-          warranty: "",
+          warrantyExpiry: "",
           notes: "",
         });
       }
@@ -355,8 +355,8 @@ export function AssetFormDialog({
             <Field label="Purchase Date" error={errors.purchaseDate?.message}>
               <Input type="date" {...register("purchaseDate")} />
             </Field>
-            <Field label="Warranty Expiration" error={errors.warranty?.message}>
-              <Input type="date" {...register("warranty")} />
+            <Field label="Warranty Expiration" error={errors.warrantyExpiry?.message}>
+              <Input type="date" {...register("warrantyExpiry")} />
             </Field>
             <div className="sm:col-span-2">
               <Field label="Notes & Extras (e.g., Charger S/N)" error={errors.notes?.message}>

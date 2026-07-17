@@ -60,6 +60,12 @@ export function crudRouter(prisma: PrismaClient, modelName: string) {
       if (result.slaHours === undefined) result.slaHours = 48;
     }
 
+    // Default missing required strings for Asset
+    if (modelName === "asset") {
+      if (result.purchaseDate === undefined) result.purchaseDate = "";
+      if (result.warrantyExpiry === undefined) result.warrantyExpiry = "";
+    }
+
     // Special fix for PartInstallation
     if (modelName === "partInstallation") {
       delete result.assetId;

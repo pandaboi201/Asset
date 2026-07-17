@@ -1,4 +1,4 @@
-name,assetTag,category,manufacturer,model,serialNumber,status,condition,location,department,supplier,purchaseDate,warranty,notes
+name,assetTag,category,manufacturer,model,serialNumber,status,condition,location,department,supplier,purchaseDate,warrantyExpiry,notes
 "Hp Probook 445 G8","5CD2135534","Laptop","Hp","Probook 445 G8","5CD2135534","available","good","Main Office","IT Division","Unknown Supplier","","","Charger S/N: "
 "Hp probook 450 G8","5CD1072RRT","Laptop","Hp","probook 450 G8","5CD1072RRT","available","good","Main Office","IT Division","Unknown Supplier","","","Charger S/N: "
 "HP Pavilion 15-cs3xxx","5CD05098LC","Laptop","HP","Pavilion 15-cs3xxx","5CD05098LC","available","good","Main Office","IT Division","Unknown Supplier","","","Charger S/N: "
