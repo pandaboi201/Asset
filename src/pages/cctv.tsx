@@ -123,6 +123,7 @@ export function CctvPage() {
   const [cameraMoveOpen, setCameraMoveOpen] = useState(false);
   const [nvrMoveOpen, setNvrMoveOpen] = useState(false);
   const [editingCamera, setEditingCamera] = useState<CctvCamera | null>(null);
+  const [editingNvr, setEditingNvr] = useState<Nvr | null>(null);
   const [installStatus, setInstallStatus] = useState("installed");
   const [activeTab, setActiveTab] = useState("cameras");
 
@@ -246,7 +247,12 @@ export function CctvPage() {
         </TabsContent>
 
         <TabsContent value="recorders">
-          <NvrPanel />
+          <NvrPanel 
+            nvrFormOpen={nvrFormOpen} 
+            setNvrFormOpen={setNvrFormOpen} 
+            editingNvr={editingNvr} 
+            setEditingNvr={setEditingNvr} 
+          />
         </TabsContent>
       </Tabs>
 
@@ -445,14 +451,22 @@ function NvrTile({
   );
 }
 
-function NvrPanel() {
+function NvrPanel({ 
+  nvrFormOpen, 
+  setNvrFormOpen, 
+  editingNvr, 
+  setEditingNvr 
+}: { 
+  nvrFormOpen: boolean; 
+  setNvrFormOpen: (open: boolean) => void; 
+  editingNvr: Nvr | null; 
+  setEditingNvr: (nvr: Nvr | null) => void; 
+}) {
   const { data, loading, refetch } = useAsync(() => nvrService.all(), []);
   const camerasQ = useAsync(() => cctvService.all(), []);
   const [detail, setDetail] = useState<Nvr | null>(null);
   const [open, setOpen] = useState(false);
-  const [nvrFormOpen, setNvrFormOpen] = useState(false);
   const [nvrMoveOpen, setNvrMoveOpen] = useState(false);
-  const [editingNvr, setEditingNvr] = useState<Nvr | null>(null);
   const [installStatus, setInstallStatus] = useState("installed");
 
   const historyQ = useAsync(() => nvrHistoryService.all(), [open]);
