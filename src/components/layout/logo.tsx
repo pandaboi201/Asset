@@ -9,10 +9,10 @@ export function Logo({
 }) {
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
-      <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-info shadow-glow">
+      <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary via-primary to-chart-3 shadow-glow-sm">
         <svg
           viewBox="0 0 32 32"
-          className="h-5 w-5 text-primary-foreground"
+          className="h-[18px] w-[18px] text-white"
           aria-hidden="true"
         >
           <path
@@ -23,9 +23,11 @@ export function Logo({
       </div>
       {showWordmark && (
         <div className="flex flex-col leading-none">
-          <span className="text-sm font-bold tracking-tight">AssetFlow</span>
-          <span className="text-[10px] font-medium text-muted-foreground">
-            IT Asset Suite
+          <span className="text-[13px] font-bold tracking-tight text-white">
+            AssetFlow
+          </span>
+          <span className="text-[10px] font-medium text-sidebar-foreground/50">
+            Enterprise
           </span>
         </div>
       )}
