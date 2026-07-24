@@ -61,13 +61,15 @@
     --sidebar-border: 222 30% 16%;
     --sidebar-hover: 222 30% 12%;
 
-    /* Charts */
-    --chart-1: 217 91% 53%;
-    --chart-2: 142 72% 37%;
-    --chart-3: 199 89% 48%;
-    --chart-4: 38 92% 50%;
-    --chart-5: 330 81% 60%;
-    --chart-6: 262 83% 58%;
+    /* Charts — spread across the hue wheel so category/status charts don't
+       read as "mostly blue" (chart-1 is the only blue; the rest are
+       green/amber/pink/purple/teal for clear visual separation). */
+    --chart-1: 217 91% 53%;  /* blue */
+    --chart-2: 142 72% 37%;  /* green */
+    --chart-3: 173 70% 40%;  /* teal */
+    --chart-4: 38 92% 50%;   /* amber */
+    --chart-5: 330 81% 60%;  /* pink */
+    --chart-6: 262 83% 58%;  /* purple */
 
     --radius: 0.75rem;
   }
@@ -120,12 +122,12 @@
     --sidebar-border: 217 33% 15%;
     --sidebar-hover: 217 33% 10%;
 
-    --chart-1: 217 91% 60%;
-    --chart-2: 142 64% 52%;
-    --chart-3: 199 89% 58%;
-    --chart-4: 38 92% 58%;
-    --chart-5: 330 81% 66%;
-    --chart-6: 262 83% 64%;
+    --chart-1: 217 91% 60%;  /* blue */
+    --chart-2: 142 64% 52%;  /* green */
+    --chart-3: 173 65% 48%; /* teal */
+    --chart-4: 38 92% 58%;   /* amber */
+    --chart-5: 330 81% 66%;  /* pink */
+    --chart-6: 262 83% 64%;  /* purple */
   }
 }
 

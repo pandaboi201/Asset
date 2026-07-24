@@ -6,6 +6,7 @@
   "description": "Premium Enterprise IT Asset & Inventory Management System (frontend-only)",
   "scripts": {
     "dev": "vite",
+    "server": "node server/index.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",

@@ -30,3 +30,8 @@ dist-ssr
 
 # TS build cache
 *.tsbuildinfo
+
+# Backend SQLite database (real runtime data, not committed)
+server/data/*.db
+server/data/*.db-shm
+server/data/*.db-wal

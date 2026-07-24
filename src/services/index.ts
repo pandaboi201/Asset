@@ -2,7 +2,6 @@ import type {
   AppNotification,
   Asset,
   CctvCamera,
-  DeviceHistoryEvent,
   DeviceIssue,
   DeviceUpgrade,
   InventoryItem,
@@ -14,87 +13,34 @@ import type {
   User,
 } from "@/types";
 
-import { assets } from "@/data/assets";
-import { inventory } from "@/data/inventory";
-import { deviceIssues } from "@/data/issues";
-import { maintenanceTasks } from "@/data/maintenance";
-import { repairTickets } from "@/data/repairs";
-import { spareParts } from "@/data/spare-parts";
-import { cctvCameras } from "@/data/cctv";
-import { nvrs } from "@/data/nvr";
-import { deviceUpgrades } from "@/data/upgrades";
-import { partInstallations } from "@/data/part-installations";
-import { users } from "@/data/users";
-import { activityLog, notifications } from "@/data/notifications";
-import {
-  assetTrend,
-  assetsByCategory,
-  assetsByDepartment,
-  assetsByStatus,
-  kpiMetrics,
-  maintenanceByStatus,
-} from "@/data/analytics";
-
-import { createCollectionService, delay } from "./http";
+import { apiRequest, createApiResource, API_BASE_URL } from "./api-client";
 
 /**
- * Central service registry. Every UI page imports from here and never touches
- * the mock arrays directly, so wiring a real API means editing only this file.
+ * Central service registry. Every UI page imports from here and never talks
+ * to `fetch`/the backend directly, so swapping the API implementation later
+ * only requires editing this file.
+ *
+ * All data below is served by the real backend in /server (Node + SQLite,
+ * see server/index.mjs) — there is no in-memory mock data anymore. Run the
+ * backend with `npm run server` before starting the frontend dev server.
  */
 
-export const assetService = createCollectionService<Asset>(assets, {
-  searchable: ["assetTag", "name", "serialNumber", "manufacturer", "model", "assignedTo.name"],
-});
-
-export const inventoryService = createCollectionService<InventoryItem>(
-  inventory,
-  { searchable: ["sku", "name", "category", "warehouse", "supplier"] },
-);
-
-export const issueService = createCollectionService<DeviceIssue>(deviceIssues, {
-  searchable: ["reference", "assetTag", "assetName", "issuedTo.name"],
-});
-
-export const maintenanceService = createCollectionService<MaintenanceTask>(
-  maintenanceTasks,
-  { searchable: ["reference", "assetTag", "assetName", "title", "assignedTo.name"] },
-);
-
-export const repairService = createCollectionService<RepairTicket>(
-  repairTickets,
-  { searchable: ["ticketNumber", "assetTag", "assetName", "issueSummary", "reportedBy.name"] },
-);
-
-export const sparePartService = createCollectionService<SparePart>(spareParts, {
-  searchable: ["partNumber", "name", "category", "supplier"],
-});
-
-export const cctvService = createCollectionService<CctvCamera>(cctvCameras, {
-  searchable: ["name", "location", "zone", "ipAddress", "model"],
-});
-
-export const nvrService = createCollectionService<Nvr>(nvrs, {
-  searchable: ["name", "manufacturer", "model", "location", "ipAddress"],
-});
-
-export const upgradeService = createCollectionService<DeviceUpgrade>(
-  deviceUpgrades,
-  { searchable: ["assetTag", "assetName", "title", "type"] },
-);
-
-export const partInstallationService =
-  createCollectionService<PartInstallation>(partInstallations, {
-    searchable: ["partNumber", "partName", "assetTag", "assetName"],
-  });
-
-export const userService = createCollectionService<User>(users, {
-  searchable: ["name", "email", "department", "jobTitle", "location"],
-});
+export const assetService = createApiResource<Asset>("assets");
+export const inventoryService = createApiResource<InventoryItem>("inventory");
+export const issueService = createApiResource<DeviceIssue>("issues");
+export const maintenanceService = createApiResource<MaintenanceTask>("maintenance");
+export const repairService = createApiResource<RepairTicket>("repairs");
+export const sparePartService = createApiResource<SparePart>("spare-parts");
+export const cctvService = createApiResource<CctvCamera>("cctv");
+export const nvrService = createApiResource<Nvr>("nvr");
+export const upgradeService = createApiResource<DeviceUpgrade>("upgrades");
+export const partInstallationService = createApiResource<PartInstallation>("part-installations");
+export const userService = createApiResource<User>("users");
 
 /* ------------------------------------------------------------------ */
 /* Relationship / aggregation queries                                  */
-/* These join across resources. A real API would expose them as        */
-/* dedicated endpoints (e.g. GET /assets/:tag/history).                */
+/* These are computed server-side (see server/relations.mjs) and simply */
+/* proxied here so page components don't need to know the API shape.    */
 /* ------------------------------------------------------------------ */
 
 export interface AssetHistory {
@@ -103,140 +49,204 @@ export interface AssetHistory {
   upgrades: DeviceUpgrade[];
   maintenance: MaintenanceTask[];
   parts: PartInstallation[];
-  timeline: DeviceHistoryEvent[];
+  timeline: import("@/types").DeviceHistoryEvent[];
 }
 
 /** Full lifecycle history for a single device, merged into a timeline. */
-export async function getAssetHistory(assetTag: string): Promise<AssetHistory> {
-  const [iss, rep, up, mnt, parts] = await Promise.all([
-    issueService.all(),
-    repairService.all(),
-    upgradeService.all(),
-    maintenanceService.all(),
-    partInstallationService.all(),
-  ]);
-
-  const issues = iss.filter((x) => x.assetTag === assetTag);
-  const repairs = rep.filter((x) => x.assetTag === assetTag);
-  const upgrades = up.filter((x) => x.assetTag === assetTag);
-  const maintenance = mnt.filter((x) => x.assetTag === assetTag);
-  const partsUsed = parts.filter((x) => x.assetTag === assetTag);
-
-  const timeline: DeviceHistoryEvent[] = [];
-
-  for (const it of issues) {
-    timeline.push({
-      id: `t-iss-${it.id}`,
-      kind: "issue",
-      title: `Issued to ${it.issuedTo.name}`,
-      description: `${it.issuedTo.department} · due ${new Date(it.dueDate).toLocaleDateString()}`,
-      actor: it.issuedBy,
-      status: it.status,
-      reference: it.reference,
-      date: it.issueDate,
-    });
-    if (it.returnDate) {
-      timeline.push({
-        id: `t-ret-${it.id}`,
-        kind: "return",
-        title: `Returned by ${it.issuedTo.name}`,
-        description: `Condition on return: ${it.condition}`,
-        reference: it.reference,
-        date: it.returnDate,
-      });
-    }
-  }
-  for (const r of repairs) {
-    timeline.push({
-      id: `t-rep-${r.id}`,
-      kind: "repair",
-      title: r.issueSummary,
-      description: r.assignedTechnician
-        ? `Technician: ${r.assignedTechnician.name}`
-        : "Awaiting assignment",
-      actor: r.reportedBy.name,
-      status: r.status,
-      reference: r.ticketNumber,
-      date: r.reportedAt,
-    });
-  }
-  for (const u of upgrades) {
-    timeline.push({
-      id: `t-upg-${u.id}`,
-      kind: "upgrade",
-      title: u.title,
-      description:
-        u.fromSpec && u.toSpec ? `${u.fromSpec} → ${u.toSpec}` : u.description,
-      actor: u.performedBy.name,
-      status: u.type,
-      date: u.performedAt,
-    });
-  }
-  for (const m of maintenance) {
-    timeline.push({
-      id: `t-mnt-${m.id}`,
-      kind: "maintenance",
-      title: m.title,
-      description: `${m.type} maintenance`,
-      actor: m.assignedTo.name,
-      status: m.status,
-      reference: m.reference,
-      date: m.completedDate ?? m.scheduledDate,
-    });
-  }
-  for (const p of partsUsed) {
-    timeline.push({
-      id: `t-part-${p.id}`,
-      kind: "part",
-      title: `Installed ${p.partName}${p.quantity > 1 ? ` ×${p.quantity}` : ""}`,
-      description: p.repairTicketNumber
-        ? `Part ${p.partNumber} · ${p.repairTicketNumber}`
-        : `Part ${p.partNumber}`,
-      actor: p.installedBy.name,
-      date: p.installedAt,
-    });
-  }
-
-  timeline.sort((a, b) => +new Date(b.date) - +new Date(a.date));
-
-  return { issues, repairs, upgrades, maintenance, parts: partsUsed, timeline };
+export function getAssetHistory(assetTag: string): Promise<AssetHistory> {
+  return apiRequest<AssetHistory>(`/assets/history/${encodeURIComponent(assetTag)}`);
 }
 
 /** Devices currently assigned to a given user. */
-export async function getUserDevices(userId: string): Promise<Asset[]> {
-  const all = await assetService.all();
-  return all.filter((a) => a.assignedTo?.id === userId);
+export function getUserDevices(userId: string): Promise<Asset[]> {
+  return apiRequest<Asset[]>(`/users/${encodeURIComponent(userId)}/devices`);
 }
 
 /** Every installation of a given spare part (which devices it went into). */
-export async function getPartInstallations(
-  partId: string,
-): Promise<PartInstallation[]> {
-  const all = await partInstallationService.all();
-  return all
-    .filter((p) => p.partId === partId)
-    .sort((a, b) => +new Date(b.installedAt) - +new Date(a.installedAt));
+export function getPartInstallations(partId: string): Promise<PartInstallation[]> {
+  return apiRequest<PartInstallation[]>(`/spare-parts/${encodeURIComponent(partId)}/installations`);
 }
 
 /** Cameras connected to a given NVR. */
-export async function getNvrCameras(nvr: Nvr): Promise<CctvCamera[]> {
-  const all = await cctvService.all();
-  const set = new Set(nvr.connectedCameraIds);
-  return all.filter((c) => set.has(c.id));
+export function getNvrCameras(nvr: Nvr): Promise<CctvCamera[]> {
+  return apiRequest<CctvCamera[]>(`/nvr/${encodeURIComponent(nvr.id)}/cameras`);
 }
 
 export const notificationService = {
-  all: () => delay([...notifications]),
-  activity: () => delay([...activityLog]),
+  all: () => apiRequest<AppNotification[]>("/notifications"),
+  activity: () => apiRequest<import("@/types").ActivityLogEntry[]>("/activity"),
+  markRead: (id: string) =>
+    apiRequest<AppNotification>(`/notifications/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ read: true }),
+    }),
+  markAllRead: async () => {
+    const all = await apiRequest<AppNotification[]>("/notifications");
+    await Promise.all(
+      all
+        .filter((n) => !n.read)
+        .map((n) =>
+          apiRequest(`/notifications/${n.id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ read: true }),
+          }),
+        ),
+    );
+  },
 };
 
 export const dashboardService = {
-  kpis: () => delay(kpiMetrics),
-  assetTrend: () => delay(assetTrend),
-  assetsByCategory: () => delay(assetsByCategory),
-  assetsByStatus: () => delay(assetsByStatus),
-  assetsByDepartment: () => delay(assetsByDepartment),
-  maintenanceByStatus: () => delay(maintenanceByStatus),
+  kpis: () => apiRequest<import("@/types").KpiMetric[]>("/dashboard/kpis"),
+  assetTrend: () => apiRequest<import("@/types").TimeSeriesPoint[]>("/dashboard/asset-trend"),
+  assetsByCategory: () => apiRequest<import("@/types").CategoryDatum[]>("/dashboard/assets-by-category"),
+  assetsByStatus: () => apiRequest<import("@/types").CategoryDatum[]>("/dashboard/assets-by-status"),
+  assetsByDepartment: () => apiRequest<import("@/types").CategoryDatum[]>("/dashboard/assets-by-department"),
+  maintenanceByStatus: () => apiRequest<import("@/types").CategoryDatum[]>("/dashboard/maintenance-by-status"),
 };
+
+/* ------------------------------------------------------------------ */
+/* New organization resources                                          */
+/* ------------------------------------------------------------------ */
+
+export interface Department {
+  id: string;
+  name: string;
+  code: string;
+  head: string;
+  headCount: number;
+  assetCount: number;
+  budget: string;
+  location: string;
+  status: "active" | "inactive";
+}
+
+export interface AppLocation {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  country: string;
+  type: "office" | "warehouse" | "datacenter" | "remote";
+  assetCount: number;
+  capacity: number;
+  manager: string;
+  status: "active" | "inactive";
+}
+
+export interface Vendor {
+  id: string;
+  name: string;
+  category: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  totalOrders: number;
+  totalSpend: string;
+  rating: number;
+  status: "active" | "inactive" | "preferred";
+  contractEnd?: string;
+}
+
+export interface SoftwareLicense {
+  id: string;
+  name: string;
+  vendor: string;
+  licenseType: "perpetual" | "subscription" | "volume" | "oem";
+  licenseKey: string;
+  totalSeats: number;
+  usedSeats: number;
+  purchaseDate: string;
+  expiryDate: string;
+  cost: string;
+  status: "active" | "expiring" | "expired" | "over-deployed";
+  category: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  actor: string;
+  action: "create" | "update" | "delete" | "login" | "settings" | "export";
+  resource: string;
+  resourceType: string;
+  details: string;
+  ipAddress: string;
+}
+
+export const departmentService = createApiResource<Department>("departments");
+export const locationService = createApiResource<AppLocation>("locations");
+export const vendorService = createApiResource<Vendor>("vendors");
+export const softwareLicenseService = createApiResource<SoftwareLicense>("software-licenses");
+export const auditLogService = createApiResource<AuditLogEntry>("audit-logs");
+
+/** Bulk-import an array of rows for a given resource type via the backend. */
+export function importRows(
+  type: "assets" | "inventory" | "users" | "maintenance",
+  rows: Record<string, unknown>[],
+  actor?: string,
+): Promise<{ imported: number; items: unknown[] }> {
+  return apiRequest("/import", {
+    method: "POST",
+    body: JSON.stringify({ type, rows, actor }),
+  });
+}
+
+/** The currently signed-in user (no auth system yet — always the seeded admin). */
+export function getCurrentUser(): Promise<User> {
+  return apiRequest<User>("/me");
+}
+
+/* ------------------------------------------------------------------ */
+/* Settings                                                             */
+/* ------------------------------------------------------------------ */
+
+export interface AppSettings {
+  organizationName: string;
+  supportEmail: string;
+  currency: string;
+  timezone: string;
+  compactMode: boolean;
+  reduceMotion: boolean;
+  twoFactorEnabled: boolean;
+  sessionTimeoutMinutes: number;
+  notifications: {
+    email: boolean;
+    push: boolean;
+    lowStock: boolean;
+    maintenance: boolean;
+    security: boolean;
+    weekly: boolean;
+  };
+}
+
+export const settingsService = {
+  get: () => apiRequest<AppSettings>("/settings"),
+  update: (patch: Partial<AppSettings>) =>
+    apiRequest<AppSettings>("/settings", {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+};
+
+/**
+ * Downloads a CSV export for the given resource type by opening the
+ * backend's /api/export/:type endpoint directly (the browser handles the
+ * `Content-Disposition: attachment` response as a real file download).
+ */
+export function exportCsv(
+  type:
+    | "assets"
+    | "inventory"
+    | "users"
+    | "maintenance"
+    | "repairs"
+    | "software-licenses"
+    | "audit-logs"
+    | "departments"
+    | "locations"
+    | "vendors",
+) {
+  window.open(`${API_BASE_URL}/export/${type}`, "_blank");
+}
 
 export type { AppNotification };

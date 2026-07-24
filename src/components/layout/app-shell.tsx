@@ -22,11 +22,13 @@ export function AppShell() {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="relative flex min-h-svh w-full bg-background">
-        {/* Subtle ambient gradient background */}
+        {/* Subtle ambient gradient background — mixed hues so the app doesn't
+            read as monochrome blue at rest. Primary blue is kept as one of
+            three accents rather than the only one. */}
         <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
           <div className="absolute -left-[200px] -top-[200px] h-[500px] w-[500px] rounded-full bg-primary/[0.04] blur-[100px]" />
-          <div className="absolute -right-[150px] top-[30%] h-[400px] w-[400px] rounded-full bg-chart-3/[0.03] blur-[100px]" />
-          <div className="absolute bottom-[10%] left-[20%] h-[300px] w-[300px] rounded-full bg-chart-6/[0.02] blur-[100px]" />
+          <div className="absolute -right-[150px] top-[30%] h-[400px] w-[400px] rounded-full bg-chart-6/[0.03] blur-[100px]" />
+          <div className="absolute bottom-[10%] left-[20%] h-[300px] w-[300px] rounded-full bg-chart-5/[0.025] blur-[100px]" />
         </div>
 
         {/* Sidebar */}

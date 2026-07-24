@@ -52,7 +52,7 @@ export function DetailSheet({
           {subtitle && <SheetDescription>{subtitle}</SheetDescription>}
         </SheetHeader>
 
-        <ScrollArea className="flex-1">
+        <ScrollArea className="min-h-0 flex-1">
           <div className="p-6">
             {headerExtra && <div className="mb-4">{headerExtra}</div>}
             {sections.map((section, i) => (

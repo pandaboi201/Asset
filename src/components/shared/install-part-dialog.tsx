@@ -20,8 +20,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAsync } from "@/hooks/use-async";
-import { assetService, partInstallationService, sparePartService } from "@/services";
-import { currentUser } from "@/data/users";
+import {
+  assetService,
+  getCurrentUser,
+  partInstallationService,
+  sparePartService,
+} from "@/services";
 import { toast } from "@/components/ui/sonner";
 
 interface InstallPartDialogProps {
@@ -44,6 +48,7 @@ export function InstallPartDialog({
 }: InstallPartDialogProps) {
   const partsQ = useAsync(() => sparePartService.all(), []);
   const assetsQ = useAsync(() => assetService.all(), []);
+  const currentUserQ = useAsync(() => getCurrentUser(), []);
 
   const [partId, setPartId] = useState("");
   const [assetId, setAssetId] = useState("");
@@ -62,12 +67,16 @@ export function InstallPartDialog({
 
   const parts = partsQ.data ?? [];
   const assets = assetsQ.data ?? [];
-  const canSubmit = Boolean(partId && assetId) && Number(quantity) >= 1;
+  const canSubmit =
+    Boolean(partId && assetId) &&
+    Number(quantity) >= 1 &&
+    Boolean(currentUserQ.data);
 
   const submit = async () => {
     const part = fixedPart ?? parts.find((p) => p.id === partId);
     const asset = fixedAsset ?? assets.find((a) => a.id === assetId);
-    if (!part || !asset) return;
+    const installer = currentUserQ.data;
+    if (!part || !asset || !installer) return;
 
     setSubmitting(true);
     try {
@@ -80,7 +89,7 @@ export function InstallPartDialog({
         assetTag: asset.assetTag,
         assetName: asset.name,
         quantity: Math.max(1, Number(quantity) || 1),
-        installedBy: { id: currentUser.id, name: currentUser.name },
+        installedBy: { id: installer.id, name: installer.name },
         installedAt: new Date().toISOString(),
         repairTicketNumber: repairRef.trim() || undefined,
       };

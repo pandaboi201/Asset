@@ -30,6 +30,7 @@ import { useAsync } from "@/hooks/use-async";
 import { repairService } from "@/services";
 import { formatRelativeTime, getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
+import { RepairFormDialog, type RepairFormValues } from "./repair-form-dialog";
 
 const STATUS_OPTIONS = [
   { label: "Reported", value: "reported" },
@@ -53,8 +54,26 @@ export function RepairsPage() {
   const [priority, setPriority] = useState("");
   const [detail, setDetail] = useState<RepairTicket | null>(null);
   const [open, setOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   const tickets = data ?? [];
+
+  const handleAdd = async (values: RepairFormValues) => {
+    await repairService.create({
+      ticketNumber: `RPR-${Date.now().toString().slice(-6)}`,
+      assetTag: values.assetTag,
+      assetName: values.assetName,
+      issueSummary: values.issueSummary,
+      reportedBy: { name: values.reportedByName },
+      assignedTechnician: null,
+      status: "reported",
+      priority: values.priority,
+      reportedAt: new Date().toISOString(),
+      slaHours: values.slaHours,
+    } as unknown as RepairTicket);
+    toast.success(`Repair ticket created for ${values.assetTag}`);
+    refetch();
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -202,8 +221,9 @@ export function RepairsPage() {
         title="Repair Management"
         description="Track repair tickets, technician workload and SLA compliance."
         icon={<ShieldCheck className="h-5 w-5" />}
+        tone="destructive"
       >
-        <Button onClick={() => toast.info("New repair ticket form (demo)")}>
+        <Button onClick={() => setAddOpen(true)}>
           <Plus className="h-4 w-4" /> New Ticket
         </Button>
       </PageHeader>
@@ -283,6 +303,8 @@ export function RepairsPage() {
           )
         }
       />
+
+      <RepairFormDialog open={addOpen} onOpenChange={setAddOpen} onSubmit={handleAdd} />
     </div>
   );
 }

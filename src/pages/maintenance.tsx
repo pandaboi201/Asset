@@ -30,6 +30,10 @@ import { useAsync } from "@/hooks/use-async";
 import { maintenanceService } from "@/services";
 import { formatDate, getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
+import {
+  MaintenanceFormDialog,
+  type MaintenanceFormValues,
+} from "./maintenance-form-dialog";
 
 const STATUS_OPTIONS = [
   { label: "Scheduled", value: "scheduled" },
@@ -51,8 +55,27 @@ export function MaintenancePage() {
   const [type, setType] = useState("");
   const [detail, setDetail] = useState<MaintenanceTask | null>(null);
   const [open, setOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   const tasks = data ?? [];
+
+  const handleAdd = async (values: MaintenanceFormValues) => {
+    await maintenanceService.create({
+      reference: `MNT-${Date.now().toString().slice(-6)}`,
+      assetTag: values.assetTag,
+      assetName: values.assetName,
+      title: values.title,
+      type: values.type,
+      status: "scheduled",
+      priority: values.priority,
+      assignedTo: { name: values.assignedToName },
+      scheduledDate: new Date(values.scheduledDate).toISOString(),
+      vendor: values.vendor || undefined,
+      description: values.description,
+    } as unknown as MaintenanceTask);
+    toast.success(`${values.title} scheduled`);
+    refetch();
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -203,8 +226,9 @@ export function MaintenancePage() {
         title="Maintenance Management"
         description="Plan preventive and corrective maintenance to maximize asset uptime."
         icon={<Wrench className="h-5 w-5" />}
+        tone="amber"
       >
-        <Button onClick={() => toast.info("Schedule maintenance form (demo)")}>
+        <Button onClick={() => setAddOpen(true)}>
           <Plus className="h-4 w-4" /> Schedule Task
         </Button>
       </PageHeader>
@@ -284,6 +308,8 @@ export function MaintenancePage() {
           )
         }
       />
+
+      <MaintenanceFormDialog open={addOpen} onOpenChange={setAddOpen} onSubmit={handleAdd} />
     </div>
   );
 }

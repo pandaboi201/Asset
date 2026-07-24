@@ -1,6 +1,14 @@
 import { useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { AlertTriangle, MoreHorizontal, Plus, ScrollText } from "lucide-react";
+import {
+  AlertTriangle,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  RefreshCw,
+  ScrollText,
+  Trash2,
+} from "lucide-react";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { MiniStat } from "@/components/shared/mini-stat";
@@ -8,6 +16,7 @@ import { SearchInput } from "@/components/shared/search-input";
 import { FilterSelect } from "@/components/shared/filter-select";
 import { DataTable, DataTableColumnHeader } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -16,38 +25,17 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/components/ui/sonner";
 import { formatDate } from "@/lib/format";
-
-interface SoftwareLicense {
-  id: string;
-  name: string;
-  vendor: string;
-  licenseType: "perpetual" | "subscription" | "volume" | "oem";
-  licenseKey: string;
-  totalSeats: number;
-  usedSeats: number;
-  purchaseDate: string;
-  expiryDate: string;
-  cost: string;
-  status: "active" | "expiring" | "expired" | "over-deployed";
-  category: string;
-}
-
-const licenses: SoftwareLicense[] = [
-  { id: "1", name: "Microsoft 365 E3", vendor: "Microsoft", licenseType: "subscription", licenseKey: "MS365-****-****-7842", totalSeats: 200, usedSeats: 178, purchaseDate: "2024-01-15", expiryDate: "2025-01-15", cost: "$72,000/yr", status: "active", category: "Productivity" },
-  { id: "2", name: "Adobe Creative Cloud", vendor: "Adobe", licenseType: "subscription", licenseKey: "ACC-****-****-2319", totalSeats: 50, usedSeats: 48, purchaseDate: "2024-03-01", expiryDate: "2025-03-01", cost: "$39,600/yr", status: "expiring", category: "Design" },
-  { id: "3", name: "Slack Business+", vendor: "Salesforce", licenseType: "subscription", licenseKey: "SLK-****-****-9901", totalSeats: 250, usedSeats: 210, purchaseDate: "2024-06-01", expiryDate: "2025-06-01", cost: "$31,500/yr", status: "active", category: "Communication" },
-  { id: "4", name: "Jira Software Cloud", vendor: "Atlassian", licenseType: "subscription", licenseKey: "JIRA-****-****-5541", totalSeats: 100, usedSeats: 95, purchaseDate: "2024-02-15", expiryDate: "2025-02-15", cost: "$14,400/yr", status: "active", category: "Project Mgmt" },
-  { id: "5", name: "AutoCAD 2024", vendor: "Autodesk", licenseType: "perpetual", licenseKey: "ACAD-****-****-1120", totalSeats: 15, usedSeats: 18, purchaseDate: "2023-09-01", expiryDate: "—", cost: "$22,500", status: "over-deployed", category: "Engineering" },
-  { id: "6", name: "Zoom Enterprise", vendor: "Zoom", licenseType: "subscription", licenseKey: "ZM-****-****-7733", totalSeats: 300, usedSeats: 195, purchaseDate: "2024-04-01", expiryDate: "2025-04-01", cost: "$54,000/yr", status: "active", category: "Communication" },
-  { id: "7", name: "Norton 360 Business", vendor: "NortonLifeLock", licenseType: "subscription", licenseKey: "NRT-****-****-4488", totalSeats: 200, usedSeats: 200, purchaseDate: "2023-11-01", expiryDate: "2024-11-01", cost: "$15,000/yr", status: "expired", category: "Security" },
-  { id: "8", name: "VMware vSphere", vendor: "Broadcom", licenseType: "perpetual", licenseKey: "VMW-****-****-6622", totalSeats: 10, usedSeats: 8, purchaseDate: "2023-06-15", expiryDate: "—", cost: "$85,000", status: "active", category: "Virtualization" },
-  { id: "9", name: "Figma Organization", vendor: "Figma", licenseType: "subscription", licenseKey: "FIG-****-****-3355", totalSeats: 40, usedSeats: 38, purchaseDate: "2024-05-01", expiryDate: "2025-05-01", cost: "$18,000/yr", status: "active", category: "Design" },
-  { id: "10", name: "GitHub Enterprise", vendor: "GitHub", licenseType: "subscription", licenseKey: "GH-****-****-8899", totalSeats: 80, usedSeats: 72, purchaseDate: "2024-01-01", expiryDate: "2025-01-01", cost: "$16,800/yr", status: "expiring", category: "Development" },
-];
+import { useAsync } from "@/hooks/use-async";
+import { softwareLicenseService, type SoftwareLicense } from "@/services";
+import {
+  LicenseFormDialog,
+  type LicenseFormValues,
+} from "./software-license-form-dialog";
 
 const STATUS_OPTIONS = [
   { label: "Active", value: "active" },
@@ -57,8 +45,14 @@ const STATUS_OPTIONS = [
 ];
 
 export function SoftwareLicensesPage() {
+  const { data, loading, refetch } = useAsync(() => softwareLicenseService.all(), []);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<SoftwareLicense | null>(null);
+  const [toDelete, setToDelete] = useState<SoftwareLicense | null>(null);
+
+  const licenses = data ?? [];
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -70,7 +64,61 @@ export function SoftwareLicensesPage() {
       const matchesStatus = !status || l.status === status;
       return matchesSearch && matchesStatus;
     });
-  }, [search, status]);
+  }, [licenses, search, status]);
+
+  const openCreate = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+  const openEdit = (l: SoftwareLicense) => {
+    setEditing(l);
+    setFormOpen(true);
+  };
+
+  const handleSubmit = async (values: LicenseFormValues) => {
+    const payload = {
+      name: values.name,
+      vendor: values.vendor,
+      licenseType: values.licenseType,
+      totalSeats: values.totalSeats,
+      category: values.category,
+      costCentsPerYear: Math.round(values.costPerYear * 100),
+      expiryDate: values.expiryDate || undefined,
+    };
+    if (editing) {
+      await softwareLicenseService.update(editing.id, payload);
+      toast.success("License updated");
+    } else {
+      await softwareLicenseService.create({
+        ...payload,
+        licenseKey: `${values.name.slice(0, 3).toUpperCase()}-${Date.now().toString().slice(-6)}`,
+        purchaseDate: new Date().toISOString(),
+        usedSeats: 0,
+        status: "active",
+      } as unknown as Partial<SoftwareLicense>);
+      toast.success("License created");
+    }
+    refetch();
+  };
+
+  const renew = async (license: SoftwareLicense) => {
+    const nextYear = new Date();
+    nextYear.setFullYear(nextYear.getFullYear() + 1);
+    await softwareLicenseService.update(license.id, {
+      status: "active",
+      expiryDate: nextYear.toISOString(),
+    } as Partial<SoftwareLicense>);
+    toast.success(`${license.name} renewed through ${formatDate(nextYear.toISOString())}`);
+    refetch();
+  };
+
+  const handleDelete = async () => {
+    if (!toDelete) return;
+    await softwareLicenseService.remove(toDelete.id);
+    toast.success(`${toDelete.name} removed`);
+    setToDelete(null);
+    refetch();
+  };
 
   const columns = useMemo<ColumnDef<SoftwareLicense>[]>(
     () => [
@@ -144,18 +192,31 @@ export function SoftwareLicensesPage() {
       {
         id: "actions",
         enableHiding: false,
-        cell: () => (
+        cell: ({ row }) => (
           <div className="text-right">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm">
+                <Button variant="ghost" size="icon-sm" onClick={(e) => e.stopPropagation()}>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => toast.info("View license (demo)")}>View details</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toast.info("Renew license (demo)")}>Renew</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openEdit(row.original)}>
+                  <Pencil className="h-3.5 w-3.5" /> Edit
+                </DropdownMenuItem>
+                {row.original.licenseType !== "perpetual" && (
+                  <DropdownMenuItem onClick={() => renew(row.original)}>
+                    <RefreshCw className="h-3.5 w-3.5" /> Renew (1 year)
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => setToDelete(row.original)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Remove
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -166,7 +227,6 @@ export function SoftwareLicensesPage() {
     [],
   );
 
-  const totalCostNum = licenses.length;
   const expiringSoon = licenses.filter((l) => l.status === "expiring").length;
   const overDeployed = licenses.filter((l) => l.status === "over-deployed").length;
 
@@ -176,25 +236,27 @@ export function SoftwareLicensesPage() {
         title="Software Licenses"
         description="Track software entitlements, compliance and renewal schedules."
         icon={<ScrollText className="h-5 w-5" />}
+        tone="purple"
       >
-        <Button onClick={() => toast.info("Add license form (demo)")}>
+        <Button onClick={openCreate}>
           <Plus className="h-4 w-4" /> Add License
         </Button>
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MiniStat label="Total Licenses" value={totalCostNum} icon={<ScrollText className="h-5 w-5" />} />
-        <MiniStat label="Expiring Soon" value={expiringSoon} tone="warning" icon={<AlertTriangle className="h-5 w-5" />} />
-        <MiniStat label="Over-deployed" value={overDeployed} tone="destructive" icon={<AlertTriangle className="h-5 w-5" />} />
-        <MiniStat label="Active" value={licenses.filter((l) => l.status === "active").length} tone="success" icon={<ScrollText className="h-5 w-5" />} />
+        <MiniStat label="Total Licenses" value={licenses.length} icon={<ScrollText className="h-5 w-5" />} loading={loading} />
+        <MiniStat label="Expiring Soon" value={expiringSoon} tone="warning" icon={<AlertTriangle className="h-5 w-5" />} loading={loading} />
+        <MiniStat label="Over-deployed" value={overDeployed} tone="destructive" icon={<AlertTriangle className="h-5 w-5" />} loading={loading} />
+        <MiniStat label="Active" value={licenses.filter((l) => l.status === "active").length} tone="success" icon={<ScrollText className="h-5 w-5" />} loading={loading} />
       </div>
 
       <DataTable
         columns={columns}
         data={filtered}
-        loading={false}
+        loading={loading}
         getRowId={(row) => row.id}
         emptyTitle="No software licenses found"
+        emptyDescription="Add your first license to start tracking compliance."
         toolbar={
           <>
             <SearchInput
@@ -211,6 +273,23 @@ export function SoftwareLicensesPage() {
             />
           </>
         }
+      />
+
+      <LicenseFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        license={editing}
+        onSubmit={handleSubmit}
+      />
+
+      <ConfirmDialog
+        open={Boolean(toDelete)}
+        onOpenChange={(o) => !o && setToDelete(null)}
+        title="Remove license?"
+        description={`This will permanently remove ${toDelete?.name} from tracking. This action cannot be undone.`}
+        confirmLabel="Remove"
+        destructive
+        onConfirm={handleDelete}
       />
     </div>
   );

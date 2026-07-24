@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   Bell,
   Check,
@@ -22,7 +22,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAsync } from "@/hooks/use-async";
 import { notificationService } from "@/services";
-import { notifications as seed } from "@/data/notifications";
 import { formatRelativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -39,7 +38,7 @@ const TONE: Record<NotificationType, string> = {
   success: "text-success bg-success/10",
   warning: "text-warning bg-warning/15",
   error: "text-destructive bg-destructive/10",
-  maintenance: "text-primary bg-primary/10",
+  maintenance: "text-chart-3 bg-chart-3/10",
   security: "text-chart-5 bg-chart-5/10",
 };
 
@@ -48,7 +47,7 @@ function NotificationRow({
   onRead,
 }: {
   n: AppNotification;
-  onRead: (id: string) => void;
+  onRead: (id: string) => void | Promise<void>;
 }) {
   const Icon = ICONS[n.type];
   return (
@@ -93,13 +92,20 @@ function NotificationRow({
 }
 
 export function NotificationsPage() {
-  const [items, setItems] = useState<AppNotification[]>(seed);
+  const { data, loading, refetch } = useAsync(() => notificationService.all(), []);
   const activity = useAsync(() => notificationService.activity(), []);
+  const items = data ?? [];
 
   const unread = useMemo(() => items.filter((n) => !n.read), [items]);
-  const markRead = (id: string) =>
-    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-  const markAll = () => setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+
+  const markRead = async (id: string) => {
+    await notificationService.markRead(id);
+    refetch();
+  };
+  const markAll = async () => {
+    await notificationService.markAllRead();
+    refetch();
+  };
 
   return (
     <div className="space-y-6">
@@ -107,6 +113,7 @@ export function NotificationsPage() {
         title="Notifications"
         description="Stay on top of alerts, activity and system events."
         icon={<Bell className="h-5 w-5" />}
+        tone="pink"
       >
         <Button variant="outline" onClick={markAll} disabled={unread.length === 0}>
           <CheckCheck className="h-4 w-4" /> Mark all read
@@ -115,30 +122,42 @@ export function NotificationsPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <Tabs defaultValue="all" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="all">All ({items.length})</TabsTrigger>
-              <TabsTrigger value="unread">Unread ({unread.length})</TabsTrigger>
-            </TabsList>
-            <TabsContent value="all" className="space-y-3">
-              {items.map((n) => (
-                <NotificationRow key={n.id} n={n} onRead={markRead} />
-              ))}
-            </TabsContent>
-            <TabsContent value="unread" className="space-y-3">
-              {unread.length === 0 ? (
-                <EmptyState
-                  icon={CheckCheck}
-                  title="You're all caught up"
-                  description="There are no unread notifications."
-                />
-              ) : (
-                unread.map((n) => (
-                  <NotificationRow key={n.id} n={n} onRead={markRead} />
-                ))
-              )}
-            </TabsContent>
-          </Tabs>
+          {loading ? (
+            <ListSkeleton rows={6} />
+          ) : (
+            <Tabs defaultValue="all" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="all">All ({items.length})</TabsTrigger>
+                <TabsTrigger value="unread">Unread ({unread.length})</TabsTrigger>
+              </TabsList>
+              <TabsContent value="all" className="space-y-3">
+                {items.length === 0 ? (
+                  <EmptyState
+                    icon={Bell}
+                    title="No notifications"
+                    description="You'll see system alerts and updates here."
+                  />
+                ) : (
+                  items.map((n) => (
+                    <NotificationRow key={n.id} n={n} onRead={markRead} />
+                  ))
+                )}
+              </TabsContent>
+              <TabsContent value="unread" className="space-y-3">
+                {unread.length === 0 ? (
+                  <EmptyState
+                    icon={CheckCheck}
+                    title="You're all caught up"
+                    description="There are no unread notifications."
+                  />
+                ) : (
+                  unread.map((n) => (
+                    <NotificationRow key={n.id} n={n} onRead={markRead} />
+                  ))
+                )}
+              </TabsContent>
+            </Tabs>
+          )}
         </div>
 
         <Card className="h-fit">

@@ -45,6 +45,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAsync } from "@/hooks/use-async";
 import {
   dashboardService,
+  exportCsv,
   notificationService,
   repairService,
 } from "@/services";
@@ -103,7 +104,10 @@ export function DashboardPage() {
         </Select>
         <Button
           variant="outline"
-          onClick={() => toast.success("Export started (demo)")}
+          onClick={() => {
+            exportCsv("assets");
+            toast.success("Downloading assets.csv");
+          }}
         >
           <Download className="h-4 w-4" /> Export
         </Button>
