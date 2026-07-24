@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Monitor, Moon, Settings as SettingsIcon, Sun } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/page-header";
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -25,6 +26,8 @@ import {
 import { useTheme, type Theme } from "@/components/theme/theme-provider";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/sonner";
+import { useAsync } from "@/hooks/use-async";
+import { settingsService, type AppSettings } from "@/services";
 
 function SettingRow({
   title,
@@ -54,14 +57,55 @@ const THEME_OPTIONS: { value: Theme; label: string; icon: typeof Sun }[] = [
 
 export function SettingsPage() {
   const { theme, setTheme } = useTheme();
-  const [notif, setNotif] = useState({
-    email: true,
-    push: true,
-    lowStock: true,
-    maintenance: true,
-    security: true,
-    weekly: false,
-  });
+  const { data, loading, refetch } = useAsync(() => settingsService.get(), []);
+
+  // Local editable copies for the "General" form fields, synced once loaded.
+  const [orgName, setOrgName] = useState("");
+  const [supportEmail, setSupportEmail] = useState("");
+  const [currency, setCurrency] = useState("USD");
+  const [timezone, setTimezone] = useState("pst");
+  const [sessionTimeout, setSessionTimeout] = useState("30");
+
+  useEffect(() => {
+    if (data) {
+      setOrgName(data.organizationName);
+      setSupportEmail(data.supportEmail);
+      setCurrency(data.currency);
+      setTimezone(data.timezone);
+      setSessionTimeout(String(data.sessionTimeoutMinutes));
+    }
+  }, [data]);
+
+  const saveGeneral = async () => {
+    await settingsService.update({
+      organizationName: orgName,
+      supportEmail,
+      currency,
+      timezone,
+    });
+    toast.success("Settings saved");
+    refetch();
+  };
+
+  const patchAndRefetch = async (patch: Partial<AppSettings>) => {
+    await settingsService.update(patch);
+    refetch();
+  };
+
+  const toggleNotif = async (key: keyof AppSettings["notifications"], value: boolean) => {
+    if (!data) return;
+    await patchAndRefetch({
+      notifications: { ...data.notifications, [key]: value },
+    });
+  };
+
+  const saveSecurity = async () => {
+    await settingsService.update({
+      sessionTimeoutMinutes: Number(sessionTimeout),
+    });
+    toast.success("Security settings updated");
+    refetch();
+  };
 
   return (
     <div className="space-y-6">
@@ -69,6 +113,7 @@ export function SettingsPage() {
         title="Settings"
         description="Manage your organization and application preferences."
         icon={<SettingsIcon className="h-5 w-5" />}
+        tone="teal"
       />
 
       <Tabs defaultValue="general" className="space-y-6">
@@ -89,46 +134,59 @@ export function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>Organization name</Label>
-                  <Input defaultValue="Acme Corporation" />
+              {loading ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-9 w-full" />
+                  ))}
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Support email</Label>
-                  <Input defaultValue="it-support@acme.io" type="email" />
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="org-name">Organization name</Label>
+                    <Input id="org-name" value={orgName} onChange={(e) => setOrgName(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="support-email">Support email</Label>
+                    <Input
+                      id="support-email"
+                      value={supportEmail}
+                      onChange={(e) => setSupportEmail(e.target.value)}
+                      type="email"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Default currency</Label>
+                    <Select value={currency} onValueChange={setCurrency}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="USD">USD ($)</SelectItem>
+                        <SelectItem value="EUR">EUR (€)</SelectItem>
+                        <SelectItem value="GBP">GBP (£)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Timezone</Label>
+                    <Select value={timezone} onValueChange={setTimezone}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pst">Pacific (PST)</SelectItem>
+                        <SelectItem value="est">Eastern (EST)</SelectItem>
+                        <SelectItem value="gmt">London (GMT)</SelectItem>
+                        <SelectItem value="cet">Central Europe (CET)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Default currency</Label>
-                  <Select defaultValue="USD">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">USD ($)</SelectItem>
-                      <SelectItem value="EUR">EUR (€)</SelectItem>
-                      <SelectItem value="GBP">GBP (£)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Timezone</Label>
-                  <Select defaultValue="pst">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pst">Pacific (PST)</SelectItem>
-                      <SelectItem value="est">Eastern (EST)</SelectItem>
-                      <SelectItem value="gmt">London (GMT)</SelectItem>
-                      <SelectItem value="cet">Central Europe (CET)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              )}
               <Separator />
               <div className="flex justify-end">
-                <Button onClick={() => toast.success("Settings saved")}>
+                <Button onClick={saveGeneral} disabled={loading}>
                   Save changes
                 </Button>
               </div>
@@ -171,13 +229,19 @@ export function SettingsPage() {
                 title="Compact mode"
                 description="Reduce spacing to fit more content on screen."
               >
-                <Switch onCheckedChange={() => toast.info("Compact mode (demo)")} />
+                <Switch
+                  checked={data?.compactMode ?? false}
+                  onCheckedChange={(v) => patchAndRefetch({ compactMode: v })}
+                />
               </SettingRow>
               <SettingRow
                 title="Reduce motion"
                 description="Minimize animations and transitions."
               >
-                <Switch onCheckedChange={() => toast.info("Motion preference (demo)")} />
+                <Switch
+                  checked={data?.reduceMotion ?? false}
+                  onCheckedChange={(v) => patchAndRefetch({ reduceMotion: v })}
+                />
               </SettingRow>
             </CardContent>
           </Card>
@@ -193,24 +257,52 @@ export function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="divide-y">
-              <SettingRow title="Email notifications" description="Receive updates via email.">
-                <Switch checked={notif.email} onCheckedChange={(v) => setNotif((s) => ({ ...s, email: v }))} />
-              </SettingRow>
-              <SettingRow title="Push notifications" description="In-app real-time alerts.">
-                <Switch checked={notif.push} onCheckedChange={(v) => setNotif((s) => ({ ...s, push: v }))} />
-              </SettingRow>
-              <SettingRow title="Low stock alerts" description="When inventory drops below reorder level.">
-                <Switch checked={notif.lowStock} onCheckedChange={(v) => setNotif((s) => ({ ...s, lowStock: v }))} />
-              </SettingRow>
-              <SettingRow title="Maintenance reminders" description="Upcoming and overdue maintenance.">
-                <Switch checked={notif.maintenance} onCheckedChange={(v) => setNotif((s) => ({ ...s, maintenance: v }))} />
-              </SettingRow>
-              <SettingRow title="Security alerts" description="Camera and access-related events.">
-                <Switch checked={notif.security} onCheckedChange={(v) => setNotif((s) => ({ ...s, security: v }))} />
-              </SettingRow>
-              <SettingRow title="Weekly digest" description="A summary of activity every Monday.">
-                <Switch checked={notif.weekly} onCheckedChange={(v) => setNotif((s) => ({ ...s, weekly: v }))} />
-              </SettingRow>
+              {loading || !data ? (
+                <div className="space-y-4 py-2">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Skeleton key={i} className="h-9 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <SettingRow title="Email notifications" description="Receive updates via email.">
+                    <Switch
+                      checked={data.notifications.email}
+                      onCheckedChange={(v) => toggleNotif("email", v)}
+                    />
+                  </SettingRow>
+                  <SettingRow title="Push notifications" description="In-app real-time alerts.">
+                    <Switch
+                      checked={data.notifications.push}
+                      onCheckedChange={(v) => toggleNotif("push", v)}
+                    />
+                  </SettingRow>
+                  <SettingRow title="Low stock alerts" description="When inventory drops below reorder level.">
+                    <Switch
+                      checked={data.notifications.lowStock}
+                      onCheckedChange={(v) => toggleNotif("lowStock", v)}
+                    />
+                  </SettingRow>
+                  <SettingRow title="Maintenance reminders" description="Upcoming and overdue maintenance.">
+                    <Switch
+                      checked={data.notifications.maintenance}
+                      onCheckedChange={(v) => toggleNotif("maintenance", v)}
+                    />
+                  </SettingRow>
+                  <SettingRow title="Security alerts" description="Camera and access-related events.">
+                    <Switch
+                      checked={data.notifications.security}
+                      onCheckedChange={(v) => toggleNotif("security", v)}
+                    />
+                  </SettingRow>
+                  <SettingRow title="Weekly digest" description="A summary of activity every Monday.">
+                    <Switch
+                      checked={data.notifications.weekly}
+                      onCheckedChange={(v) => toggleNotif("weekly", v)}
+                    />
+                  </SettingRow>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -240,13 +332,16 @@ export function SettingsPage() {
                 title="Two-factor authentication"
                 description="Add an extra layer of security to your account."
               >
-                <Switch defaultChecked onCheckedChange={() => toast.info("2FA (demo)")} />
+                <Switch
+                  checked={data?.twoFactorEnabled ?? true}
+                  onCheckedChange={(v) => patchAndRefetch({ twoFactorEnabled: v })}
+                />
               </SettingRow>
               <SettingRow
                 title="Session timeout"
                 description="Automatically sign out after inactivity."
               >
-                <Select defaultValue="30">
+                <Select value={sessionTimeout} onValueChange={setSessionTimeout}>
                   <SelectTrigger className="w-32">
                     <SelectValue />
                   </SelectTrigger>
@@ -259,7 +354,7 @@ export function SettingsPage() {
               </SettingRow>
               <Separator />
               <div className="flex justify-end">
-                <Button onClick={() => toast.success("Security settings updated")}>
+                <Button onClick={saveSecurity}>
                   Update security
                 </Button>
               </div>

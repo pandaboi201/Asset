@@ -28,10 +28,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAsync } from "@/hooks/use-async";
 import { cctvService, nvrService } from "@/services";
-import { CCTV_ZONE_OPTIONS } from "@/data/cctv";
+import { CCTV_ZONE_OPTIONS } from "@/data/options";
 import { formatDate, formatRelativeTime } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
+import { CameraFormDialog, type CameraFormValues } from "./camera-form-dialog";
 
 const STATUS_OPTIONS = [
   { label: "Online", value: "online" },
@@ -136,14 +137,31 @@ function CameraTile({
 }
 
 export function CctvPage() {
-  const { data, loading } = useAsync(() => cctvService.all(), []);
+  const { data, loading, refetch } = useAsync(() => cctvService.all(), []);
   const [search, setSearch] = useState("");
   const [zone, setZone] = useState("");
   const [status, setStatus] = useState("");
   const [detail, setDetail] = useState<CctvCamera | null>(null);
   const [open, setOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   const cameras = data ?? [];
+
+  const handleAddCamera = async (values: CameraFormValues) => {
+    await cctvService.create({
+      ...values,
+      status: "offline",
+      recording: false,
+      storageUsedGb: 0,
+      storageTotalGb: 2000,
+      lastPing: new Date().toISOString(),
+      installedDate: new Date().toISOString(),
+      firmwareVersion: "v1.0.0",
+      nvrId: null,
+    } as unknown as CctvCamera);
+    toast.success(`${values.name} added — connect it to an NVR to start recording`);
+    refetch();
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -184,8 +202,9 @@ export function CctvPage() {
         title="CCTV Management"
         description="Monitor the camera fleet, recording status and storage health."
         icon={<Camera className="h-5 w-5" />}
+        tone="pink"
       >
-        <Button onClick={() => toast.info("Add camera form (demo)")}>
+        <Button onClick={() => setAddOpen(true)}>
           <Plus className="h-4 w-4" /> Add Camera
         </Button>
       </PageHeader>
@@ -291,12 +310,24 @@ export function CctvPage() {
               <Button variant="outline" onClick={() => setOpen(false)}>
                 Close
               </Button>
-              <Button onClick={() => toast.success(`Opening live feed for ${detail.name} (demo)`)}>
+              <Button
+                onClick={() =>
+                  toast.info(
+                    "Live video streaming requires camera hardware integration, which isn't connected in this environment.",
+                  )
+                }
+              >
                 <Radio className="h-4 w-4" /> Live feed
               </Button>
             </>
           )
         }
+      />
+
+      <CameraFormDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onSubmit={handleAddCamera}
       />
     </div>
   );
@@ -530,7 +561,13 @@ function NvrPanel() {
               <Button variant="outline" onClick={() => setOpen(false)}>
                 Close
               </Button>
-              <Button onClick={() => toast.success(`Opening ${detail.name} console (demo)`)}>
+              <Button
+                onClick={() =>
+                  toast.info(
+                    "The NVR management console requires a direct network connection to the device, which isn't available in this environment.",
+                  )
+                }
+              >
                 <Server className="h-4 w-4" /> Manage
               </Button>
             </>

@@ -27,9 +27,9 @@ const TONE: Record<DeviceHistoryKind, string> = {
   issue: "text-info bg-info/10 ring-info/20",
   return: "text-success bg-success/10 ring-success/20",
   repair: "text-warning bg-warning/15 ring-warning/20",
-  upgrade: "text-primary bg-primary/10 ring-primary/20",
+  upgrade: "text-chart-6 bg-chart-6/10 ring-chart-6/20",
   maintenance: "text-chart-5 bg-chart-5/10 ring-chart-5/20",
-  part: "text-info bg-info/10 ring-info/20",
+  part: "text-chart-3 bg-chart-3/10 ring-chart-3/20",
 };
 
 const KIND_LABEL: Record<DeviceHistoryKind, string> = {

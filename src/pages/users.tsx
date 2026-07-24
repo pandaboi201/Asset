@@ -17,6 +17,7 @@ import { FilterSelect } from "@/components/shared/filter-select";
 import { DataTable, DataTableColumnHeader } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { DetailSheet } from "@/components/shared/detail-sheet";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -25,14 +26,17 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAsync } from "@/hooks/use-async";
 import { assetService, userService } from "@/services";
-import { DEPARTMENT_OPTIONS } from "@/data/users";
+import { USER_DEPARTMENT_OPTIONS as DEPARTMENT_OPTIONS } from "@/data/options";
 import { formatDate, formatRelativeTime, getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
+import { Pencil, Trash2, Send } from "lucide-react";
+import { UserFormDialog, type UserFormValues } from "./user-form-dialog";
 
 const ROLE_OPTIONS = [
   { label: "Admin", value: "admin" },
@@ -43,21 +47,64 @@ const ROLE_OPTIONS = [
 
 const ROLE_TONE: Record<string, string> = {
   admin: "bg-primary/10 text-primary",
-  manager: "bg-info/10 text-info",
+  manager: "bg-chart-6/10 text-chart-6",
   technician: "bg-success/10 text-success",
   viewer: "bg-muted text-muted-foreground",
 };
 
 export function UsersPage() {
-  const { data, loading } = useAsync(() => userService.all(), []);
+  const { data, loading, refetch } = useAsync(() => userService.all(), []);
   const assetsQ = useAsync(() => assetService.all(), []);
   const [search, setSearch] = useState("");
   const [role, setRole] = useState("");
   const [department, setDepartment] = useState("");
   const [detail, setDetail] = useState<User | null>(null);
   const [open, setOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<User | null>(null);
+  const [toDelete, setToDelete] = useState<User | null>(null);
 
   const users = data ?? [];
+
+  const openCreate = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+  const openEdit = (u: User) => {
+    setEditing(u);
+    setFormOpen(true);
+  };
+
+  const handleSubmit = async (values: UserFormValues) => {
+    if (editing) {
+      await userService.update(editing.id, values);
+      toast.success("User updated");
+    } else {
+      await userService.create({
+        ...values,
+        status: "invited",
+        lastActiveAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      } as unknown as User);
+      toast.success(`Invite sent to ${values.email}`);
+    }
+    refetch();
+  };
+
+  const resendInvite = async (u: User) => {
+    await userService.update(u.id, { status: "invited" });
+    toast.success(`Invite resent to ${u.email}`);
+    refetch();
+  };
+
+  const handleDelete = async () => {
+    if (!toDelete) return;
+    await userService.remove(toDelete.id);
+    toast.success(`${toDelete.name} removed`);
+    setToDelete(null);
+    setOpen(false);
+    refetch();
+  };
 
   /** Map of userId -> devices currently assigned to them. */
   const devicesByUser = useMemo(() => {
@@ -201,11 +248,20 @@ export function UsersPage() {
                 >
                   View profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toast.info("Edit user (demo)")}>
-                  Edit user
+                <DropdownMenuItem onClick={() => openEdit(row.original)}>
+                  <Pencil className="h-3.5 w-3.5" /> Edit user
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toast.success("Invite resent (demo)")}>
-                  Resend invite
+                {row.original.status === "invited" && (
+                  <DropdownMenuItem onClick={() => resendInvite(row.original)}>
+                    <Send className="h-3.5 w-3.5" /> Resend invite
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => setToDelete(row.original)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Remove
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -223,8 +279,9 @@ export function UsersPage() {
         title="User Management"
         description="Manage team members, roles and access permissions."
         icon={<UsersIcon className="h-5 w-5" />}
+        tone="purple"
       >
-        <Button onClick={() => toast.info("Invite user form (demo)")}>
+        <Button onClick={openCreate}>
           <UserPlus className="h-4 w-4" /> Invite User
         </Button>
       </PageHeader>
@@ -341,10 +398,34 @@ export function UsersPage() {
               <Button variant="outline" onClick={() => setOpen(false)}>
                 Close
               </Button>
-              <Button onClick={() => toast.info("Edit user (demo)")}>Edit user</Button>
+              <Button
+                onClick={() => {
+                  setOpen(false);
+                  openEdit(detail);
+                }}
+              >
+                <Pencil className="h-4 w-4" /> Edit user
+              </Button>
             </>
           )
         }
+      />
+
+      <UserFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        user={editing}
+        onSubmit={handleSubmit}
+      />
+
+      <ConfirmDialog
+        open={Boolean(toDelete)}
+        onOpenChange={(o) => !o && setToDelete(null)}
+        title="Remove user?"
+        description={`This will permanently remove ${toDelete?.name} from the organization. This action cannot be undone.`}
+        confirmLabel="Remove"
+        destructive
+        onConfirm={handleDelete}
       />
     </div>
   );

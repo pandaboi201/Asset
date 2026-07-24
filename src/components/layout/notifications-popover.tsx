@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   Bell,
   CircleCheck,
@@ -18,10 +18,12 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { notifications as seedNotifications } from "@/data/notifications";
-import type { AppNotification, NotificationType } from "@/types";
+import { useAsync } from "@/hooks/use-async";
+import { notificationService } from "@/services";
+import type { NotificationType } from "@/types";
 import { formatRelativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { ListSkeleton } from "@/components/shared/loading";
 
 const ICONS: Record<NotificationType, typeof Info> = {
   info: Info,
@@ -37,16 +39,24 @@ const TONE: Record<NotificationType, string> = {
   success: "text-success bg-success/10",
   warning: "text-warning bg-warning/15",
   error: "text-destructive bg-destructive/10",
-  maintenance: "text-primary bg-primary/10",
+  maintenance: "text-chart-3 bg-chart-3/10",
   security: "text-chart-5 bg-chart-5/10",
 };
 
 export function NotificationsPopover() {
-  const [items, setItems] = useState<AppNotification[]>(seedNotifications);
+  const { data, loading, refetch } = useAsync(() => notificationService.all(), []);
+  const items = data ?? [];
   const unread = useMemo(() => items.filter((n) => !n.read).length, [items]);
 
-  const markAllRead = () =>
-    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markAllRead = async () => {
+    await notificationService.markAllRead();
+    refetch();
+  };
+
+  const markOneRead = async (id: string) => {
+    await notificationService.markRead(id);
+    refetch();
+  };
 
   return (
     <Popover>
@@ -81,53 +91,54 @@ export function NotificationsPopover() {
             size="sm"
             className="h-auto p-0 text-xs"
             onClick={markAllRead}
+            disabled={unread === 0}
           >
             Mark all read
           </Button>
         </div>
         <Separator />
         <ScrollArea className="max-h-[380px]">
-          <div className="flex flex-col">
-            {items.map((n) => {
-              const Icon = ICONS[n.type];
-              return (
-                <button
-                  key={n.id}
-                  onClick={() =>
-                    setItems((prev) =>
-                      prev.map((it) =>
-                        it.id === n.id ? { ...it, read: true } : it,
-                      ),
-                    )
-                  }
-                  className="flex gap-3 border-b border-border/60 px-4 py-3 text-left transition-colors hover:bg-accent/50 last:border-0"
-                >
-                  <span
-                    className={cn(
-                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-                      TONE[n.type],
-                    )}
+          {loading ? (
+            <div className="p-4">
+              <ListSkeleton rows={4} />
+            </div>
+          ) : (
+            <div className="flex flex-col">
+              {items.map((n) => {
+                const Icon = ICONS[n.type];
+                return (
+                  <button
+                    key={n.id}
+                    onClick={() => markOneRead(n.id)}
+                    className="flex gap-3 border-b border-border/60 px-4 py-3 text-left transition-colors hover:bg-accent/50 last:border-0"
                   >
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-medium">{n.title}</p>
-                      {!n.read && (
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                    <span
+                      className={cn(
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                        TONE[n.type],
                       )}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-medium">{n.title}</p>
+                        {!n.read && (
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                        )}
+                      </div>
+                      <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                        {n.message}
+                      </p>
+                      <p className="mt-1 text-[11px] text-muted-foreground/70">
+                        {formatRelativeTime(n.createdAt)}
+                      </p>
                     </div>
-                    <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                      {n.message}
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted-foreground/70">
-                      {formatRelativeTime(n.createdAt)}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </ScrollArea>
         <Separator />
         <div className="p-2">

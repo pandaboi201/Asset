@@ -25,7 +25,7 @@ const TONE: Record<ActivityLogEntry["type"], string> = {
   create: "text-success bg-success/10",
   update: "text-info bg-info/10",
   delete: "text-destructive bg-destructive/10",
-  assign: "text-primary bg-primary/10",
+  assign: "text-chart-6 bg-chart-6/10",
   resolve: "text-success bg-success/10",
   login: "text-muted-foreground bg-muted",
 };
