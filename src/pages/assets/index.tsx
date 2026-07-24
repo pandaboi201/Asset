@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { CircleCheck, Laptop, PackageCheck, Plus, Wrench } from "lucide-react";
 
 import type { Asset } from "@/types";
@@ -19,6 +20,14 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { createAssetColumns } from "./asset-columns";
 import { AssetFormDialog, type AssetFormValues } from "./asset-form-dialog";
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.04 },
+  },
+};
 
 export function AssetsPage() {
   const navigate = useNavigate();
@@ -77,6 +86,7 @@ export function AssetsPage() {
         onEdit: openEdit,
         onDelete: (a) => setToDelete(a),
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
@@ -120,12 +130,18 @@ export function AssetsPage() {
         </Button>
       </PageHeader>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <motion.div
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      >
         <MiniStat
           label="Total assets"
           value={stats.total}
           icon={<Laptop className="h-5 w-5" />}
           loading={loading}
+          index={0}
         />
         <MiniStat
           label="In use"
@@ -133,6 +149,7 @@ export function AssetsPage() {
           tone="info"
           icon={<CircleCheck className="h-5 w-5" />}
           loading={loading}
+          index={1}
         />
         <MiniStat
           label="Available"
@@ -140,6 +157,7 @@ export function AssetsPage() {
           tone="success"
           icon={<PackageCheck className="h-5 w-5" />}
           loading={loading}
+          index={2}
         />
         <MiniStat
           label="In service"
@@ -147,8 +165,9 @@ export function AssetsPage() {
           tone="warning"
           icon={<Wrench className="h-5 w-5" />}
           loading={loading}
+          index={3}
         />
-      </div>
+      </motion.div>
 
       <DataTable
         columns={columns}

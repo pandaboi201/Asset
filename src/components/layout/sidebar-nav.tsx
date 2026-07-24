@@ -16,13 +16,16 @@ interface SidebarNavProps {
 
 export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
   return (
-    <nav className="flex flex-col gap-6 px-3 py-4">
+    <nav className="flex flex-col gap-5 px-3 py-3">
       {navGroups.map((group) => (
-        <div key={group.label} className="flex flex-col gap-1">
+        <div key={group.label} className="flex flex-col gap-0.5">
           {!collapsed && (
-            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">
+            <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
               {group.label}
             </p>
+          )}
+          {collapsed && (
+            <div className="mx-auto mb-1 h-px w-6 bg-sidebar-border/60" />
           )}
           {group.items.map((item) => {
             const Icon = item.icon;
@@ -34,11 +37,11 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
                 onClick={onNavigate}
                 className={({ isActive }) =>
                   cn(
-                    "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                    "text-sidebar-foreground/75 hover:bg-white/5 hover:text-sidebar-foreground",
+                    "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150",
+                    "text-sidebar-foreground/70 hover:bg-white/[0.06] hover:text-white",
                     isActive &&
-                      "bg-sidebar-accent/15 text-white hover:bg-sidebar-accent/20",
-                    collapsed && "justify-center px-0",
+                      "bg-sidebar-accent/12 text-white hover:bg-sidebar-accent/16",
+                    collapsed && "justify-center px-0 py-2.5",
                   )
                 }
               >
@@ -46,22 +49,28 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
                   <>
                     {isActive && (
                       <motion.span
-                        layoutId="sidebar-active"
-                        className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-sidebar-accent"
-                        transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                        layoutId="sidebar-active-indicator"
+                        className="absolute left-0 inset-y-1.5 w-[3px] rounded-r-full bg-sidebar-accent"
+                        transition={{
+                          type: "spring",
+                          stiffness: 500,
+                          damping: 35,
+                        }}
                       />
                     )}
                     <Icon
                       className={cn(
-                        "h-[18px] w-[18px] shrink-0 transition-colors",
+                        "h-[18px] w-[18px] shrink-0 transition-colors duration-150",
                         isActive
                           ? "text-sidebar-accent"
-                          : "text-sidebar-foreground/60 group-hover:text-sidebar-foreground",
+                          : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground/80",
                       )}
                     />
-                    {!collapsed && <span className="truncate">{item.title}</span>}
+                    {!collapsed && (
+                      <span className="truncate">{item.title}</span>
+                    )}
                     {!collapsed && item.badge && (
-                      <span className="ml-auto rounded-full bg-sidebar-accent px-1.5 py-0.5 text-[10px] font-semibold text-sidebar-accent-foreground">
+                      <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-sidebar-accent/20 px-1.5 text-[10px] font-bold text-sidebar-accent">
                         {item.badge}
                       </span>
                     )}
@@ -73,7 +82,13 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
             return collapsed ? (
               <Tooltip key={item.href} delayDuration={0}>
                 <TooltipTrigger asChild>{link}</TooltipTrigger>
-                <TooltipContent side="right">{item.title}</TooltipContent>
+                <TooltipContent
+                  side="right"
+                  className="font-medium"
+                  sideOffset={8}
+                >
+                  {item.title}
+                </TooltipContent>
               </Tooltip>
             ) : (
               link

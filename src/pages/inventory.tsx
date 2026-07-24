@@ -3,10 +3,10 @@ import type { ColumnDef } from "@tanstack/react-table";
 import {
   Boxes,
   MoreHorizontal,
+  PackageCheck,
   PackagePlus,
   PackageX,
   TriangleAlert,
-  Warehouse,
 } from "lucide-react";
 
 import type { InventoryItem } from "@/types";
@@ -32,7 +32,7 @@ import {
   INVENTORY_CATEGORY_OPTIONS,
   INVENTORY_WAREHOUSE_OPTIONS,
 } from "@/data/inventory";
-import { formatCompactNumber, formatCurrency, formatDate } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
 
 export function InventoryPage() {
@@ -63,7 +63,7 @@ export function InventoryPage() {
       skus: items.length,
       low: items.filter((i) => i.status === "low-stock").length,
       out: items.filter((i) => i.status === "out-of-stock").length,
-      value: items.reduce((s, i) => s + i.quantity * i.unitCost, 0),
+      inStock: items.filter((i) => i.status === "in-stock").length,
     }),
     [items],
   );
@@ -146,18 +146,6 @@ export function InventoryPage() {
         meta: { label: "Warehouse" },
       },
       {
-        accessorKey: "unitCost",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Unit cost" className="justify-end" />
-        ),
-        cell: ({ row }) => (
-          <div className="text-right tabular-nums">
-            {formatCurrency(row.original.unitCost)}
-          </div>
-        ),
-        meta: { label: "Unit cost" },
-      },
-      {
         accessorKey: "status",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Status" />
@@ -220,7 +208,7 @@ export function InventoryPage() {
         <MiniStat label="Total SKUs" value={stats.skus} icon={<Boxes className="h-5 w-5" />} loading={loading} />
         <MiniStat label="Low stock" value={stats.low} tone="warning" icon={<TriangleAlert className="h-5 w-5" />} loading={loading} />
         <MiniStat label="Out of stock" value={stats.out} tone="destructive" icon={<PackageX className="h-5 w-5" />} loading={loading} />
-        <MiniStat label="Stock value" value={`$${formatCompactNumber(stats.value)}`} tone="success" icon={<Warehouse className="h-5 w-5" />} loading={loading} />
+        <MiniStat label="In stock" value={stats.inStock} tone="success" icon={<PackageCheck className="h-5 w-5" />} loading={loading} />
       </div>
 
       <DataTable
@@ -271,11 +259,6 @@ export function InventoryPage() {
                   rows: [
                     { label: "Quantity on hand", value: detail.quantity },
                     { label: "Reorder level", value: detail.reorderLevel },
-                    { label: "Unit cost", value: formatCurrency(detail.unitCost) },
-                    {
-                      label: "Total value",
-                      value: formatCurrency(detail.quantity * detail.unitCost),
-                    },
                   ],
                 },
                 {

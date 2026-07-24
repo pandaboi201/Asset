@@ -50,7 +50,3 @@ export function dateFromNow(days: number): string {
   d.setHours(randInt(8, 18), randInt(0, 59), 0, 0);
   return d.toISOString();
 }
-
-export function money(min: number, max: number): number {
-  return Math.round((rng() * (max - min) + min) / 5) * 5;
-}

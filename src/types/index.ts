@@ -81,7 +81,6 @@ export interface InventoryItem {
   category: string;
   quantity: number;
   reorderLevel: number;
-  unitCost: number;
   location: string;
   warehouse: string;
   supplier: string;
@@ -137,8 +136,6 @@ export interface MaintenanceTask {
   };
   scheduledDate: string;
   completedDate?: string | null;
-  estimatedCost: number;
-  actualCost?: number | null;
   vendor?: string;
   description: string;
 }
@@ -171,8 +168,6 @@ export interface RepairTicket {
   priority: Priority;
   reportedAt: string;
   resolvedAt?: string | null;
-  estimatedCost: number;
-  actualCost?: number | null;
   vendor?: string;
   slaHours: number;
 }
@@ -187,7 +182,6 @@ export interface SparePart {
   compatibleWith: string[];
   quantity: number;
   reorderLevel: number;
-  unitCost: number;
   supplier: string;
   location: string;
   status: SparePartStatus;
@@ -342,7 +336,7 @@ export interface KpiMetric {
   id: string;
   label: string;
   value: number;
-  format: "number" | "currency" | "percent";
+  format: "number" | "percent";
   delta: number; // percentage change vs previous period
   trend: "up" | "down" | "flat";
   spark: number[];
