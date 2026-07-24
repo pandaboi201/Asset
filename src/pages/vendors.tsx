@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { MoreHorizontal, Plus, Star, Store } from "lucide-react";
+import { MoreHorizontal, Pencil, Plus, Star, Store, Trash2 } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/page-header";
 import { MiniStat } from "@/components/shared/mini-stat";
 import { SearchInput } from "@/components/shared/search-input";
 import { DataTable, DataTableColumnHeader } from "@/components/shared/data-table";
+import { DetailSheet } from "@/components/shared/detail-sheet";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -13,37 +15,30 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAsync } from "@/hooks/use-async";
+import { vendorService, type Vendor } from "@/services";
 import { toast } from "@/components/ui/sonner";
+import { VendorFormDialog, type VendorFormValues } from "./vendor-form-dialog";
 
-interface Vendor {
-  id: string;
-  name: string;
-  category: string;
-  contactPerson: string;
-  email: string;
-  phone: string;
-  totalOrders: number;
-  totalSpend: string;
-  rating: number;
-  status: "active" | "inactive" | "preferred";
-  contractEnd: string;
-}
-
-const vendors: Vendor[] = [
-  { id: "1", name: "Dell Technologies", category: "Hardware", contactPerson: "John Smith", email: "sales@dell.com", phone: "+1-800-999-3355", totalOrders: 156, totalSpend: "$1.2M", rating: 4.8, status: "preferred", contractEnd: "2025-12-31" },
-  { id: "2", name: "HP Enterprise", category: "Hardware", contactPerson: "Jane Doe", email: "enterprise@hp.com", phone: "+1-800-474-6836", totalOrders: 89, totalSpend: "$680K", rating: 4.5, status: "active", contractEnd: "2025-09-15" },
-  { id: "3", name: "Cisco Systems", category: "Networking", contactPerson: "Bob Wilson", email: "partners@cisco.com", phone: "+1-800-553-6387", totalOrders: 42, totalSpend: "$450K", rating: 4.7, status: "preferred", contractEnd: "2026-03-01" },
-  { id: "4", name: "Microsoft", category: "Software", contactPerson: "Alice Brown", email: "licensing@microsoft.com", phone: "+1-800-642-7676", totalOrders: 12, totalSpend: "$320K", rating: 4.6, status: "active", contractEnd: "2025-11-30" },
-  { id: "5", name: "Lenovo", category: "Hardware", contactPerson: "Mike Chen", email: "business@lenovo.com", phone: "+1-855-253-6686", totalOrders: 67, totalSpend: "$520K", rating: 4.3, status: "active", contractEnd: "2025-08-20" },
-  { id: "6", name: "CDW", category: "Reseller", contactPerson: "Sarah Lee", email: "accounts@cdw.com", phone: "+1-800-839-4239", totalOrders: 203, totalSpend: "$890K", rating: 4.4, status: "preferred", contractEnd: "2026-01-15" },
-  { id: "7", name: "Palo Alto Networks", category: "Security", contactPerson: "Tom Harris", email: "sales@paloalto.com", phone: "+1-866-320-4788", totalOrders: 18, totalSpend: "$280K", rating: 4.9, status: "active", contractEnd: "2025-10-01" },
-  { id: "8", name: "APC by Schneider", category: "Infrastructure", contactPerson: "Grace Kim", email: "support@apc.com", phone: "+1-800-800-4272", totalOrders: 34, totalSpend: "$150K", rating: 4.2, status: "inactive", contractEnd: "2024-12-31" },
-];
+const STATUS_BADGE: Record<Vendor["status"], string> = {
+  preferred: "badge-info",
+  active: "badge-success",
+  inactive: "badge-warning",
+};
 
 export function VendorsPage() {
+  const { data, loading, refetch } = useAsync(() => vendorService.all(), []);
   const [search, setSearch] = useState("");
+  const [detail, setDetail] = useState<Vendor | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Vendor | null>(null);
+  const [toDelete, setToDelete] = useState<Vendor | null>(null);
+
+  const vendors = data ?? [];
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -54,7 +49,40 @@ export function VendorsPage() {
         v.category.toLowerCase().includes(q) ||
         v.contactPerson.toLowerCase().includes(q),
     );
-  }, [search]);
+  }, [vendors, search]);
+
+  const openCreate = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+  const openEdit = (v: Vendor) => {
+    setEditing(v);
+    setFormOpen(true);
+  };
+
+  const handleSubmit = async (values: VendorFormValues) => {
+    if (editing) {
+      await vendorService.update(editing.id, values);
+      toast.success("Vendor updated");
+    } else {
+      await vendorService.create({
+        ...values,
+        totalOrders: 0,
+        totalSpend: "$0",
+        rating: 0,
+      });
+      toast.success("Vendor created");
+    }
+    refetch();
+  };
+
+  const handleDelete = async () => {
+    if (!toDelete) return;
+    await vendorService.remove(toDelete.id);
+    toast.success(`${toDelete.name} deleted`);
+    setToDelete(null);
+    refetch();
+  };
 
   const columns = useMemo<ColumnDef<Vendor>[]>(
     () => [
@@ -63,7 +91,7 @@ export function VendorsPage() {
         header: ({ column }) => <DataTableColumnHeader column={column} title="Vendor" />,
         cell: ({ row }) => (
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/8 text-primary ring-1 ring-primary/10">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-warning/10 text-warning ring-1 ring-warning/15">
               <Store className="h-4 w-4" />
             </div>
             <div>
@@ -116,16 +144,7 @@ export function VendorsPage() {
         accessorKey: "status",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
         cell: ({ row }) => (
-          <Badge
-            variant="outline"
-            className={
-              row.original.status === "preferred"
-                ? "badge-info"
-                : row.original.status === "active"
-                  ? "badge-success"
-                  : "badge-warning"
-            }
-          >
+          <Badge variant="outline" className={STATUS_BADGE[row.original.status]}>
             {row.original.status}
           </Badge>
         ),
@@ -134,18 +153,34 @@ export function VendorsPage() {
       {
         id: "actions",
         enableHiding: false,
-        cell: () => (
+        cell: ({ row }) => (
           <div className="text-right">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm">
+                <Button variant="ghost" size="icon-sm" onClick={(e) => e.stopPropagation()}>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => toast.info("View vendor (demo)")}>View details</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toast.info("Edit vendor (demo)")}>Edit</DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setDetail(row.original);
+                    setDetailOpen(true);
+                  }}
+                >
+                  View details
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openEdit(row.original)}>
+                  <Pencil className="h-3.5 w-3.5" /> Edit
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => setToDelete(row.original)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Delete
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -162,25 +197,31 @@ export function VendorsPage() {
         title="Vendors"
         description="Manage suppliers, contracts and procurement relationships."
         icon={<Store className="h-5 w-5" />}
+        tone="amber"
       >
-        <Button onClick={() => toast.info("Add vendor form (demo)")}>
+        <Button onClick={openCreate}>
           <Plus className="h-4 w-4" /> Add Vendor
         </Button>
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MiniStat label="Total Vendors" value={vendors.length} icon={<Store className="h-5 w-5" />} />
-        <MiniStat label="Preferred" value={vendors.filter((v) => v.status === "preferred").length} tone="info" icon={<Star className="h-5 w-5" />} />
-        <MiniStat label="Active" value={vendors.filter((v) => v.status === "active").length} tone="success" icon={<Store className="h-5 w-5" />} />
-        <MiniStat label="Total Orders" value={vendors.reduce((s, v) => s + v.totalOrders, 0)} tone="warning" icon={<Store className="h-5 w-5" />} />
+        <MiniStat label="Total Vendors" value={vendors.length} icon={<Store className="h-5 w-5" />} loading={loading} />
+        <MiniStat label="Preferred" value={vendors.filter((v) => v.status === "preferred").length} tone="info" icon={<Star className="h-5 w-5" />} loading={loading} />
+        <MiniStat label="Active" value={vendors.filter((v) => v.status === "active").length} tone="success" icon={<Store className="h-5 w-5" />} loading={loading} />
+        <MiniStat label="Total Orders" value={vendors.reduce((s, v) => s + v.totalOrders, 0)} tone="warning" icon={<Store className="h-5 w-5" />} loading={loading} />
       </div>
 
       <DataTable
         columns={columns}
         data={filtered}
-        loading={false}
+        loading={loading}
         getRowId={(row) => row.id}
+        onRowClick={(row) => {
+          setDetail(row);
+          setDetailOpen(true);
+        }}
         emptyTitle="No vendors found"
+        emptyDescription="Add your first vendor to get started."
         toolbar={
           <SearchInput
             value={search}
@@ -188,6 +229,75 @@ export function VendorsPage() {
             placeholder="Search vendors..."
             className="w-full sm:w-72"
           />
+        }
+      />
+
+      <VendorFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        vendor={editing}
+        onSubmit={handleSubmit}
+      />
+
+      <ConfirmDialog
+        open={Boolean(toDelete)}
+        onOpenChange={(o) => !o && setToDelete(null)}
+        title="Delete vendor?"
+        description={`This will permanently remove ${toDelete?.name}. This action cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={handleDelete}
+      />
+
+      <DetailSheet
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        headerBadge={detail && (
+          <Badge variant="outline" className={STATUS_BADGE[detail.status]}>
+            {detail.status}
+          </Badge>
+        )}
+        title={detail?.name ?? ""}
+        subtitle={detail ? detail.category : ""}
+        sections={
+          detail
+            ? [
+                {
+                  title: "Contact",
+                  rows: [
+                    { label: "Contact person", value: detail.contactPerson },
+                    { label: "Email", value: detail.email },
+                    { label: "Phone", value: detail.phone },
+                  ],
+                },
+                {
+                  title: "Relationship",
+                  rows: [
+                    { label: "Total orders", value: detail.totalOrders },
+                    { label: "Total spend", value: detail.totalSpend },
+                    { label: "Rating", value: `${detail.rating} / 5` },
+                    { label: "Contract end", value: detail.contractEnd ?? "—" },
+                  ],
+                },
+              ]
+            : []
+        }
+        footer={
+          detail && (
+            <>
+              <Button variant="outline" onClick={() => setDetailOpen(false)}>
+                Close
+              </Button>
+              <Button
+                onClick={() => {
+                  setDetailOpen(false);
+                  openEdit(detail);
+                }}
+              >
+                <Pencil className="h-4 w-4" /> Edit
+              </Button>
+            </>
+          )
         }
       />
     </div>

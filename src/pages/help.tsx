@@ -105,6 +105,7 @@ export function HelpPage() {
         title="Help Center"
         description="Guides, FAQs and support to help you get the most out of AssetFlow."
         icon={<CircleHelp className="h-5 w-5" />}
+        tone="teal"
       />
 
       {/* Hero search */}
@@ -132,7 +133,9 @@ export function HelpPage() {
           <Card
             key={title}
             className="group cursor-pointer p-5 transition-shadow hover:shadow-elevated"
-            onClick={() => toast.info(`Opening ${title} (demo)`)}
+            onClick={() =>
+              toast.info(`${title} articles aren't published yet — check back soon.`)
+            }
           >
             <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
               <Icon className="h-5 w-5" />
@@ -174,13 +177,23 @@ export function HelpPage() {
             <CardDescription>Our support team is here for you.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button className="w-full justify-start" variant="outline" onClick={() => toast.info("Opening live chat (demo)")}>
+            <Button
+              className="w-full justify-start"
+              variant="outline"
+              onClick={() => toast.info("Live chat isn't available yet — please email support instead.")}
+            >
               <MessageSquare className="h-4 w-4" /> Start live chat
             </Button>
-            <Button className="w-full justify-start" variant="outline" onClick={() => toast.info("Opening email (demo)")}>
-              <Mail className="h-4 w-4" /> Email support
+            <Button className="w-full justify-start" variant="outline" asChild>
+              <a href="mailto:it-support@acme.io">
+                <Mail className="h-4 w-4" /> Email support
+              </a>
             </Button>
-            <Button className="w-full justify-start" variant="outline" onClick={() => toast.info("Opening docs (demo)")}>
+            <Button
+              className="w-full justify-start"
+              variant="outline"
+              onClick={() => toast.info("Documentation site isn't published yet — check back soon.")}
+            >
               <Book className="h-4 w-4" /> Browse documentation
             </Button>
             <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">

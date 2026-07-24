@@ -30,6 +30,7 @@ import { useAsync } from "@/hooks/use-async";
 import { issueService } from "@/services";
 import { formatDate, getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
+import { IssueFormDialog, type IssueFormValues } from "./issue-form-dialog";
 
 const STATUS_OPTIONS = [
   { label: "Issued", value: "issued" },
@@ -44,8 +45,25 @@ export function IssuesPage() {
   const [status, setStatus] = useState("");
   const [detail, setDetail] = useState<DeviceIssue | null>(null);
   const [open, setOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   const issues = data ?? [];
+
+  const handleAdd = async (values: IssueFormValues) => {
+    await issueService.create({
+      reference: `ISS-${Date.now().toString().slice(-6)}`,
+      assetTag: values.assetTag,
+      assetName: values.assetName,
+      issuedTo: { name: values.issuedToName, department: values.issuedToDepartment },
+      issuedBy: "IT Service Desk",
+      issueDate: new Date().toISOString(),
+      dueDate: new Date(values.dueDate).toISOString(),
+      status: "issued",
+      condition: "good",
+    } as unknown as DeviceIssue);
+    toast.success(`${values.assetTag} issued to ${values.issuedToName}`);
+    refetch();
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -196,8 +214,9 @@ export function IssuesPage() {
         title="Device Issue & Returns"
         description="Manage device check-out and check-in across the workforce."
         icon={<ArrowLeftRight className="h-5 w-5" />}
+        tone="info"
       >
-        <Button onClick={() => toast.info("Issue device form (demo)")}>
+        <Button onClick={() => setAddOpen(true)}>
           <Plus className="h-4 w-4" /> Issue Device
         </Button>
       </PageHeader>
@@ -299,6 +318,8 @@ export function IssuesPage() {
           )
         }
       />
+
+      <IssueFormDialog open={addOpen} onOpenChange={setAddOpen} onSubmit={handleAdd} />
     </div>
   );
 }

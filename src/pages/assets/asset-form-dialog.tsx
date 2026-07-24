@@ -23,13 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ASSET_CATEGORY_OPTIONS,
   ASSET_DEPARTMENT_OPTIONS,
   ASSET_LOCATION_OPTIONS,
   ASSET_STATUS_OPTIONS,
-} from "@/data/assets";
+} from "@/data/options";
 
 const assetSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -141,8 +140,19 @@ export function AssetFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90svh] max-w-2xl gap-0 p-0">
-        <DialogHeader className="border-b p-6">
+      {/*
+        Structure is a single flex column with THREE direct children:
+        1) shrink-0 header
+        2) flex-1 min-h-0 overflow-y-auto body  <-- the `min-h-0` is required,
+           otherwise a flex child refuses to shrink below its content size
+           and the footer gets pushed out of the viewport / dialog grows
+           past the screen, which is what produced the "misaligned" dialog.
+        3) shrink-0 footer
+        No nested Radix ScrollArea here — a plain scrollable div is more
+        predictable inside a flex dialog and avoids double-scrollbar bugs.
+      */}
+      <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col gap-0 p-0">
+        <DialogHeader className="shrink-0 border-b border-border/60 px-6 py-5">
           <DialogTitle>{isEdit ? "Edit Asset" : "Add New Asset"}</DialogTitle>
           <DialogDescription>
             {isEdit
@@ -151,8 +161,12 @@ export function AssetFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60svh]">
-          <form id="asset-form" onSubmit={submit} className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2">
+        <form
+          id="asset-form"
+          onSubmit={submit}
+          className="min-h-0 flex-1 overflow-y-auto"
+        >
+          <div className="grid grid-cols-1 gap-4 p-6 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <Field label="Asset name" required error={errors.name?.message}>
                 <Input placeholder="e.g. MacBook Pro 14&quot;" {...register("name")} />
@@ -284,11 +298,11 @@ export function AssetFormDialog({
                 <Textarea rows={3} placeholder="Optional notes..." {...register("notes")} />
               </Field>
             </div>
-          </form>
-        </ScrollArea>
+          </div>
+        </form>
 
-        <DialogFooter className="border-t p-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="shrink-0 border-t border-border/60 px-6 py-4">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button type="submit" form="asset-form" loading={isSubmitting}>

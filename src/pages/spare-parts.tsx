@@ -33,9 +33,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAsync } from "@/hooks/use-async";
 import { partInstallationService, sparePartService } from "@/services";
-import { SPARE_PART_CATEGORY_OPTIONS } from "@/data/spare-parts";
+import { SPARE_PART_CATEGORY_OPTIONS } from "@/data/options";
 import { formatDate } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
+import {
+  SparePartFormDialog,
+  type SparePartFormValues,
+} from "./spare-part-form-dialog";
 
 const STATUS_OPTIONS = [
   { label: "In stock", value: "in-stock" },
@@ -52,8 +56,29 @@ export function SparePartsPage() {
   const [detail, setDetail] = useState<SparePart | null>(null);
   const [open, setOpen] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   const parts = data ?? [];
+
+  const handleAdd = async (values: SparePartFormValues) => {
+    const status =
+      values.quantity === 0
+        ? "out-of-stock"
+        : values.quantity <= values.reorderLevel
+          ? "low-stock"
+          : "in-stock";
+    await sparePartService.create({
+      ...values,
+      compatibleWith: (values.compatibleWith ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      status,
+      updatedAt: new Date().toISOString(),
+    } as unknown as SparePart);
+    toast.success(`${values.name} added to spare parts`);
+    refetch();
+  };
 
   const removeInstall = async (id: string) => {
     await partInstallationService.remove(id);
@@ -230,8 +255,9 @@ export function SparePartsPage() {
         title="Spare Parts"
         description="Manage component stock used for repairs, swaps and refurbishment."
         icon={<PackageSearch className="h-5 w-5" />}
+        tone="amber"
       >
-        <Button onClick={() => toast.info("Add spare part form (demo)")}>
+        <Button onClick={() => setAddOpen(true)}>
           <Plus className="h-4 w-4" /> Add Part
         </Button>
       </PageHeader>
@@ -374,6 +400,8 @@ export function SparePartsPage() {
         fixedPart={detail}
         onCreated={() => installsQ.refetch()}
       />
+
+      <SparePartFormDialog open={addOpen} onOpenChange={setAddOpen} onSubmit={handleAdd} />
     </div>
   );
 }

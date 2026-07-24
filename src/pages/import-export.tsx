@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Download,
   FileDown,
@@ -28,34 +28,131 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/sonner";
+import { exportCsv, importRows } from "@/services";
 
-const EXPORT_TYPES = [
-  { id: "assets", label: "Assets", description: "All hardware assets with full details", icon: FileSpreadsheet, records: 64 },
-  { id: "inventory", label: "Inventory", description: "Current stock levels and reorder data", icon: FileSpreadsheet, records: 48 },
-  { id: "users", label: "Users", description: "All team members and their roles", icon: FileSpreadsheet, records: 32 },
-  { id: "maintenance", label: "Maintenance", description: "Maintenance tasks and schedules", icon: FileSpreadsheet, records: 28 },
-  { id: "repairs", label: "Repairs", description: "Repair tickets and SLA data", icon: FileSpreadsheet, records: 20 },
-  { id: "licenses", label: "Software Licenses", description: "License entitlements and compliance", icon: FileText, records: 10 },
+const EXPORT_TYPES: {
+  id: "assets" | "inventory" | "users" | "maintenance" | "repairs" | "software-licenses";
+  label: string;
+  description: string;
+  icon: typeof FileSpreadsheet;
+}[] = [
+  { id: "assets", label: "Assets", description: "All hardware assets with full details", icon: FileSpreadsheet },
+  { id: "inventory", label: "Inventory", description: "Current stock levels and reorder data", icon: FileSpreadsheet },
+  { id: "users", label: "Users", description: "All team members and their roles", icon: FileSpreadsheet },
+  { id: "maintenance", label: "Maintenance", description: "Maintenance tasks and schedules", icon: FileSpreadsheet },
+  { id: "repairs", label: "Repairs", description: "Repair tickets and SLA data", icon: FileSpreadsheet },
+  { id: "software-licenses", label: "Software Licenses", description: "License entitlements and compliance", icon: FileText },
 ];
+
+/** Minimal CSV parser: handles quoted fields, commas inside quotes, and CRLF/LF. */
+function parseCsv(text: string): Record<string, string>[] {
+  const lines = text.split(/\r?\n/).filter((l) => l.length > 0);
+  if (lines.length === 0) return [];
+
+  function parseLine(line: string): string[] {
+    const out: string[] = [];
+    let cur = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"' && line[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else if (ch === '"') {
+          inQuotes = false;
+        } else {
+          cur += ch;
+        }
+      } else if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ",") {
+        out.push(cur);
+        cur = "";
+      } else {
+        cur += ch;
+      }
+    }
+    out.push(cur);
+    return out;
+  }
+
+  const header = parseLine(lines[0]);
+  return lines.slice(1).map((line) => {
+    const cells = parseLine(line);
+    const row: Record<string, string> = {};
+    header.forEach((key, i) => {
+      row[key] = cells[i] ?? "";
+    });
+    return row;
+  });
+}
+
+const IMPORT_TYPES = [
+  { value: "assets", label: "Assets" },
+  { value: "inventory", label: "Inventory" },
+  { value: "users", label: "Users" },
+  { value: "maintenance", label: "Maintenance" },
+] as const;
 
 export function ImportExportPage() {
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [importType, setImportType] = useState<(typeof IMPORT_TYPES)[number]["value"]>("assets");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const simulateImport = () => {
+  const handleExport = (type: (typeof EXPORT_TYPES)[number]["id"]) => {
+    exportCsv(type);
+    toast.success(`Downloading ${type}.csv`);
+  };
+
+  const handleFileSelected = async (file: File) => {
     setImporting(true);
-    setProgress(0);
-    const interval = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 100) {
-          clearInterval(interval);
-          setImporting(false);
-          toast.success("Import completed successfully!");
-          return 0;
-        }
-        return p + 10;
-      });
-    }, 300);
+    setProgress(10);
+    try {
+      const text = await file.text();
+      setProgress(40);
+      const rows = parseCsv(text);
+      if (rows.length === 0) {
+        toast.error("The CSV file has no data rows");
+        return;
+      }
+      setProgress(70);
+      const result = await importRows(importType, rows);
+      setProgress(100);
+      toast.success(`Imported ${result.imported} ${importType} record${result.imported === 1 ? "" : "s"}`);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Import failed — check the file format",
+      );
+    } finally {
+      setTimeout(() => {
+        setImporting(false);
+        setProgress(0);
+      }, 400);
+    }
+  };
+
+  const onFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFileSelected(file);
+    e.target.value = "";
+  };
+
+  const downloadTemplate = (type: string) => {
+    const templates: Record<string, string> = {
+      Assets: "assetTag,name,category,manufacturer,model,serialNumber,status,condition,location,department,supplier\n",
+      Inventory: "sku,name,category,quantity,reorderLevel,location,warehouse,supplier,status\n",
+      Users: "name,email,role,department,jobTitle,phone,location,status\n",
+      Maintenance: "reference,assetTag,assetName,title,type,status,priority,scheduledDate,description\n",
+    };
+    const blob = new Blob([templates[type] ?? ""], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${type.toLowerCase()}-template.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -64,6 +161,7 @@ export function ImportExportPage() {
         title="Import / Export"
         description="Bulk data operations — import from CSV or export your data in multiple formats."
         icon={<FileDown className="h-5 w-5" />}
+        tone="teal"
       />
 
       <Tabs defaultValue="export" className="space-y-6">
@@ -82,53 +180,20 @@ export function ImportExportPage() {
             <CardHeader>
               <CardTitle>Export Options</CardTitle>
               <CardDescription>
-                Choose a data type and format to export your records.
+                Download a live CSV snapshot of any resource, generated directly from the database.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mb-6 grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Export format</Label>
-                  <Select defaultValue="csv">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="csv">CSV (.csv)</SelectItem>
-                      <SelectItem value="xlsx">Excel (.xlsx)</SelectItem>
-                      <SelectItem value="pdf">PDF (.pdf)</SelectItem>
-                      <SelectItem value="json">JSON (.json)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Date range</Label>
-                  <Select defaultValue="all">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All time</SelectItem>
-                      <SelectItem value="30d">Last 30 days</SelectItem>
-                      <SelectItem value="90d">Last 90 days</SelectItem>
-                      <SelectItem value="12m">Last 12 months</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <Separator className="my-6" />
-
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {EXPORT_TYPES.map((type) => {
                   const Icon = type.icon;
                   return (
                     <button
                       key={type.id}
-                      onClick={() => toast.success(`Exporting ${type.label} (demo)`)}
+                      onClick={() => handleExport(type.id)}
                       className="group flex items-start gap-3 rounded-xl border border-border/60 bg-card p-4 text-left transition-all duration-200 hover:border-primary/30 hover:shadow-sm"
                     >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary ring-1 ring-primary/10 transition-all group-hover:bg-primary/12">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-chart-3/10 text-chart-3 ring-1 ring-chart-3/15 transition-all group-hover:bg-chart-3/15">
                         <Icon className="h-5 w-5" />
                       </div>
                       <div className="min-w-0">
@@ -137,7 +202,7 @@ export function ImportExportPage() {
                           {type.description}
                         </p>
                         <p className="mt-1 text-xs font-medium text-primary">
-                          {type.records} records
+                          Download CSV
                         </p>
                       </div>
                     </button>
@@ -160,20 +225,29 @@ export function ImportExportPage() {
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <Label>Data type</Label>
-                <Select defaultValue="assets">
+                <Select value={importType} onValueChange={(v) => setImportType(v as typeof importType)}>
                   <SelectTrigger className="max-w-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="assets">Assets</SelectItem>
-                    <SelectItem value="inventory">Inventory</SelectItem>
-                    <SelectItem value="users">Users</SelectItem>
-                    <SelectItem value="maintenance">Maintenance</SelectItem>
+                    {IMPORT_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="rounded-xl border-2 border-dashed border-border/60 bg-muted/20 p-8 text-center transition-colors hover:border-primary/30">
+              <div
+                className="rounded-xl border-2 border-dashed border-border/60 bg-muted/20 p-8 text-center transition-colors hover:border-primary/30"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) handleFileSelected(file);
+                }}
+              >
                 <Upload className="mx-auto h-10 w-10 text-muted-foreground/60" />
                 <p className="mt-3 text-sm font-medium">
                   Drag and drop your CSV file here
@@ -181,10 +255,17 @@ export function ImportExportPage() {
                 <p className="mt-1 text-xs text-muted-foreground">
                   or click to browse — max file size 10MB
                 </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv,text/csv"
+                  className="hidden"
+                  onChange={onFileInputChange}
+                />
                 <Button
                   variant="outline"
                   className="mt-4"
-                  onClick={simulateImport}
+                  onClick={() => fileInputRef.current?.click()}
                   disabled={importing}
                 >
                   {importing ? "Importing..." : "Select File"}
@@ -214,7 +295,7 @@ export function ImportExportPage() {
                       key={t}
                       variant="outline"
                       size="sm"
-                      onClick={() => toast.info(`Downloading ${t} template (demo)`)}
+                      onClick={() => downloadTemplate(t)}
                     >
                       <Download className="h-3.5 w-3.5" /> {t} Template
                     </Button>

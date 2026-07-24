@@ -14,11 +14,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { currentUser } from "@/data/users";
+import { useAsync } from "@/hooks/use-async";
+import { getCurrentUser } from "@/services";
 import { getInitials } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function UserMenu() {
+  const { data: currentUser, loading } = useAsync(() => getCurrentUser(), []);
+
+  if (loading || !currentUser) {
+    return <Skeleton className="h-8 w-8 rounded-full" />;
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -63,7 +71,7 @@ export function UserMenu() {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="text-destructive focus:text-destructive"
-          onClick={() => toast.success("Signed out (demo)")}
+          onClick={() => toast.success("Signed out")}
         >
           <LogOut /> Sign out
         </DropdownMenuItem>

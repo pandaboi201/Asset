@@ -31,9 +31,13 @@ import { inventoryService } from "@/services";
 import {
   INVENTORY_CATEGORY_OPTIONS,
   INVENTORY_WAREHOUSE_OPTIONS,
-} from "@/data/inventory";
+} from "@/data/options";
 import { formatDate } from "@/lib/format";
 import { toast } from "@/components/ui/sonner";
+import {
+  InventoryFormDialog,
+  type InventoryFormValues,
+} from "./inventory-form-dialog";
 
 export function InventoryPage() {
   const { data, loading, refetch } = useAsync(() => inventoryService.all(), []);
@@ -42,8 +46,26 @@ export function InventoryPage() {
   const [warehouse, setWarehouse] = useState("");
   const [detail, setDetail] = useState<InventoryItem | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   const items = data ?? [];
+
+  const handleAdd = async (values: InventoryFormValues) => {
+    const status =
+      values.quantity === 0
+        ? "out-of-stock"
+        : values.quantity <= values.reorderLevel
+          ? "low-stock"
+          : "in-stock";
+    await inventoryService.create({
+      ...values,
+      status,
+      lastRestocked: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as unknown as InventoryItem);
+    toast.success(`${values.name} added to inventory`);
+    refetch();
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -196,10 +218,11 @@ export function InventoryPage() {
     <div className="space-y-6">
       <PageHeader
         title="Inventory Management"
+        tone="amber"
         description="Monitor consumables, stock levels and reorder points across warehouses."
         icon={<Boxes className="h-5 w-5" />}
       >
-        <Button onClick={() => toast.info("New item form (demo)")}>
+        <Button onClick={() => setAddOpen(true)}>
           <PackagePlus className="h-4 w-4" /> Add Item
         </Button>
       </PageHeader>
@@ -286,6 +309,8 @@ export function InventoryPage() {
           )
         }
       />
+
+      <InventoryFormDialog open={addOpen} onOpenChange={setAddOpen} onSubmit={handleAdd} />
     </div>
   );
 }
