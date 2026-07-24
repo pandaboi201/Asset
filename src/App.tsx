@@ -6,7 +6,7 @@ import { router } from "@/router";
 
 export function App() {
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="assetflow-theme">
+    <ThemeProvider defaultTheme="light" storageKey="assetflow-theme">
       <RouterProvider router={router} />
       <Toaster />
     </ThemeProvider>

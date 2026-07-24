@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface PageHeaderProps {
@@ -16,15 +17,18 @@ export function PageHeader({
   icon,
 }: PageHeaderProps) {
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
       className={cn(
         "flex flex-col gap-4 pb-6 sm:flex-row sm:items-start sm:justify-between",
         className,
       )}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3.5">
         {icon && (
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-info/10 text-primary">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent text-primary ring-1 ring-primary/10">
             {icon}
           </div>
         )}
@@ -33,7 +37,7 @@ export function PageHeader({
             {title}
           </h1>
           {description && (
-            <p className="max-w-2xl text-sm text-muted-foreground">
+            <p className="max-w-2xl text-[13px] leading-relaxed text-muted-foreground">
               {description}
             </p>
           )}
@@ -44,6 +48,6 @@ export function PageHeader({
           {children}
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

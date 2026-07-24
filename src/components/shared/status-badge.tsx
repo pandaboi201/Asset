@@ -67,6 +67,14 @@ const STATUS_MAP: Record<string, StatusConfig> = {
   active: { label: "Active", variant: "success", dot: "bg-success" },
   invited: { label: "Invited", variant: "info", dot: "bg-info" },
   suspended: { label: "Suspended", variant: "destructive", dot: "bg-destructive" },
+
+  // Software Licenses
+  expiring: { label: "Expiring", variant: "warning", dot: "bg-warning" },
+  expired: { label: "Expired", variant: "destructive", dot: "bg-destructive" },
+  "over-deployed": { label: "Over-deployed", variant: "destructive", dot: "bg-destructive" },
+
+  // NVR
+  degraded: { label: "Degraded", variant: "warning", dot: "bg-warning" },
 };
 
 interface StatusBadgeProps {

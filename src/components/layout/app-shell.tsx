@@ -22,18 +22,21 @@ export function AppShell() {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="relative flex min-h-svh w-full bg-background">
-        {/* Ambient background accents */}
+        {/* Subtle ambient gradient background */}
         <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-          <div className="absolute -left-40 -top-40 h-[420px] w-[420px] rounded-full bg-primary/10 blur-[120px]" />
-          <div className="absolute -right-40 top-1/3 h-[380px] w-[380px] rounded-full bg-info/10 blur-[120px]" />
+          <div className="absolute -left-[200px] -top-[200px] h-[500px] w-[500px] rounded-full bg-primary/[0.04] blur-[100px]" />
+          <div className="absolute -right-[150px] top-[30%] h-[400px] w-[400px] rounded-full bg-chart-3/[0.03] blur-[100px]" />
+          <div className="absolute bottom-[10%] left-[20%] h-[300px] w-[300px] rounded-full bg-chart-6/[0.02] blur-[100px]" />
         </div>
 
+        {/* Sidebar */}
         <Sidebar
           collapsed={collapsed}
           onToggle={() => setCollapsed((c) => !c)}
         />
         <MobileSidebar open={mobileOpen} onOpenChange={setMobileOpen} />
 
+        {/* Main content area */}
         <div className="flex min-w-0 flex-1 flex-col">
           <Topbar
             onOpenMobileSidebar={() => setMobileOpen(true)}
@@ -50,6 +53,7 @@ export function AppShell() {
           </main>
         </div>
 
+        {/* Command palette */}
         <CommandMenu open={commandOpen} onOpenChange={setCommandOpen} />
       </div>
     </TooltipProvider>
